@@ -1,233 +1,1229 @@
-<!DOCTYPE html>  
-<html lang="fr">  
-<head>  
- <meta charset="UTF-8">  
- <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">  
- <title>Core & Push Pro 🚀</title>  
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Core & Push Pro</title>
 
- <!-- Firebase SDKs Compat -->
- <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
- <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
- 
- <!-- Chart.js -->
- <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>  
+  <!-- Firebase SDKs Compat -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
- <style>  
- :root {  
-   --bg: #000000;   
-   --surface: #121214;   
-   --surface-bright: #1c1c21;  
-   --primary: #d0bcff;   
-   --primary-container: #4f378b;  
-   --on-primary: #381e72;  
-   --on-primary-container: #eaddff;  
-   --text: #e6e1e5;   
-   --text-sec: #949099;  
-   --prep: #fde293; --prep-bg: #3d3000;   
-   --work: #ffb4ab; --work-bg: #410002;   
-   --rest: #8edecc; --rest-bg: #003731;   
-   --success: #a8f5d0;  
- }  
-   
- body { margin: 0; padding: 16px; max-width: 500px; margin-left: auto; margin-right: auto; font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); padding-bottom: 80px; }  
- header { text-align: center; margin-bottom: 12px; }  
- h1 { font-weight: 700; margin: 0 0 2px 0; font-size: 1.4rem; color: var(--primary); transition: 0.3s; }  
- .header-info { display: flex; justify-content: center; align-items: center; gap: 12px; font-size: 0.75rem; color: var(--text-sec); margin-top: 6px; flex-wrap: wrap; }  
- .streak-badge { color: var(--prep); font-weight: bold; }  
- .btn-cloud { background: var(--surface-bright); color: var(--primary); border: 1px solid var(--primary); padding: 4px 10px; border-radius: 20px; font-weight: bold; font-size: 0.75rem; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 4px; }
- .btn-cloud:hover { background: var(--primary-container); color: var(--on-primary-container); }
- .tabs-nav { display: flex; background: var(--surface); border-radius: 100px; padding: 4px; margin-bottom: 16px; transition: 0.3s; }  
- .tab-btn { flex: 1; background: transparent; border: none; color: var(--text-sec); padding: 8px 4px; font-weight: 600; font-size: 0.75rem; border-radius: 100px; cursor: pointer; transition: all 0.3s; }  
- .tab-btn.active { background: var(--primary-container); color: var(--on-primary-container); box-shadow: 0 4px 12px rgba(0,0,0,0.4); }  
- .tab-content { display: none; } .tab-content.active { display: block; }  
- .card { background: var(--surface); border-radius: 24px; padding: 18px; margin-bottom: 14px; border: 1px solid rgba(255,255,255,0.06); transition: 0.3s; }  
- h3 { margin-top: 0; color: var(--primary); font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; justify-content: space-between; transition: 0.3s; }  
- .timer-container { text-align: center; margin: 10px 0 15px 0; position: relative; }  
- .timer { font-size: 3.5rem; font-variant-numeric: tabular-nums; font-weight: 800; color: var(--primary); position: relative; z-index: 2; transition: 0.3s; }  
- .timer-label { color: var(--text-sec); font-size: 0.8rem; font-weight: 500; height: 16px; }  
- .row-btn { display: flex; gap: 8px; margin-bottom: 10px;}  
- button { border: none; padding: 12px 18px; border-radius: 100px; font-size: 0.9rem; font-weight: 700; cursor: pointer; flex: 1; transition: 0.3s;}  
- button:active { transform: scale(0.96); }  
- .btn-primary { background: var(--primary); color: var(--on-primary); }  
- .btn-sec { background: transparent; border: 2px solid var(--primary); color: var(--primary); }  
- .push-counter-display { font-size: 3rem; font-weight: 800; text-align: center; color: var(--primary); margin: 5px 0; transition: 0.3s; }  
- .historique-container { max-height: 200px; overflow-y: auto; margin-top: 10px; font-size: 0.8rem; }
- .historique-item { background: var(--surface-bright); padding: 8px 12px; border-radius: 10px; margin-bottom: 6px; display: flex; justify-content: space-between; }
- </style>  
-</head>  
-<body>  
-  
- <header>  
-  <h1>Core & Push Pro 🚀</h1>  
-  <div class="header-info">  
-    <span class="streak-badge" id="streakText">🔥 Série : 0 j</span>  
-    <span id="voiceToggleSpan" style="cursor:pointer;" onclick="toggleVoice()">🔊 Vocal : ON</span>  
-    <button class="btn-cloud" id="btnCloud" onclick="syncCloudFirestore()">☁️ Cloud</button>
-  </div>  
- </header>  
-  
- <div class="tabs-nav">  
-  <button class="tab-btn active" onclick="switchTab('plank')">Planks</button>  
-  <button class="tab-btn" onclick="switchTab('pushup')">Push</button>  
-  <button class="tab-btn" onclick="switchTab('dashboard')">Data & Cloud</button>  
- </div>  
-  
- <div id="plankTab" class="tab-content active">  
-  <div class="card" id="timerCard">  
-   <div class="timer-container">
-    <div class="timer" id="display">00:00</div>
-    <div class="timer-label" id="timerLabel">Chrono Libre</div>
-   </div>  
-   <div class="row-btn">
-    <button class="btn-primary" id="startBtn" onclick="toggleStandardTimer()">Start Libre</button>
-   </div>  
-  </div>  
- </div>  
-
- <div id="pushupTab" class="tab-content">  
-  <div class="card">  
-   <h3>Compteur de Pompes</h3>  
-   <div class="push-counter-display" id="pushCount">0</div>  
-   <div class="row-btn">  
-    <button class="btn-primary" onclick="addPushups(10)">+10</button>  
-    <button class="btn-sec" onclick="resetPushups()">Reset</button>  
-   </div>  
-  </div>  
- </div>  
-
- <div id="dashboardTab" class="tab-content">  
-  <div class="card">  
-   <h3>☁️ Historique Firestore</h3>  
-   <div id="historiqueStatus" style="color: var(--text-sec); font-size: 0.8rem;">Cliquez sur ☁️ Cloud pour synchroniser.</div>
-   <div class="historique-container" id="historiqueList"></div>
-  </div>  
- </div>  
-
- <script>
-  // Configuration Firebase (Injectée via Netlify / Repli local)
-  const firebaseConfig = {
-    apiKey: window.env?.FIREBASE_API_KEY || "AIzaSy_REPLACE_IF_NEEDED",
-    authDomain: window.env?.FIREBASE_AUTH_DOMAIN || "corepushpro.firebaseapp.com",
-    projectId: window.env?.FIREBASE_PROJECT_ID || "corepushpro",
-    storageBucket: window.env?.FIREBASE_STORAGE_BUCKET || "corepushpro.firebasestorage.app",
-    messagingSenderId: window.env?.FIREBASE_MESSAGING_SENDER_ID || "123456789",
-    appId: window.env?.FIREBASE_APP_ID || "1:123456789:web:abc123def"
-  };
-
-  // Initialisation Firestore
-  let db;
-  try {
-    if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #000000; 
+      --surface: #121214; 
+      --surface-bright: #1c1c21;
+      --primary: #d0bcff; 
+      --on-primary: #381e72;
+      --primary-container: #4f378b;
+      --on-primary-container: #eaddff;
+      --text: #e6e1e5; 
+      --text-sec: #949099;
+      
+      --prep: #fde293; 
+      --prep-bg: #3d3000; 
+      --work: #ffb4ab; 
+      --work-bg: #410002; 
+      --rest: #8edecc; 
+      --rest-bg: #003731; 
+      --success: #a8f5d0;
     }
-    db = firebase.firestore();
-    console.log("Firestore initialisé avec succès.");
-  } catch (e) {
-    console.error("Erreur d'initialisation Firebase :", e);
-  }
-
-  // Changement d'onglets
-  function switchTab(tab) {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     
-    if (tab === 'plank') {
-      document.querySelectorAll('.tab-btn')[0].classList.add('active');
-      document.getElementById('plankTab').classList.add('active');
-    } else if (tab === 'pushup') {
-      document.querySelectorAll('.tab-btn')[1].classList.add('active');
-      document.getElementById('pushupTab').classList.add('active');
-    } else if (tab === 'dashboard') {
-      document.querySelectorAll('.tab-btn')[2].classList.add('active');
-      document.getElementById('dashboardTab').classList.add('active');
-      chargerHistoriqueFirestore();
+    body { 
+      margin: 0; padding: 16px; 
+      font-family: system-ui, -apple-system, sans-serif; 
+      background: var(--bg); color: var(--text); 
+      padding-bottom: 80px; overflow-x: hidden;
     }
-  }
-
-  // Synchronisation Cloud Firestore
-  async function syncCloudFirestore() {
-    const btn = document.getElementById('btnCloud');
-    const status = document.getElementById('historiqueStatus');
-    btn.textContent = "🔄 ...";
     
-    if (!db) {
-      alert("Firestore n'est pas connecté. Vérifiez vos variables d'environnement Netlify.");
-      btn.textContent = "❌ Erreur";
-      return;
+    header { text-align: center; margin-bottom: 12px; }
+    h1 { font-weight: 700; margin: 0 0 2px 0; font-size: 1.4rem; background: linear-gradient(45deg, #d0bcff, #efb8c8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .header-info { display: flex; justify-content: center; align-items: center; gap: 12px; font-size: 0.75rem; color: var(--text-sec); margin-top: 4px; flex-wrap: wrap; }
+    .streak-badge { color: var(--prep); font-weight: bold; }
+
+    .btn-cloud {
+      background: var(--surface-bright); color: var(--primary);
+      border: 1px solid var(--primary); padding: 4px 10px; border-radius: 20px;
+      font-weight: bold; font-size: 0.75rem; cursor: pointer; transition: 0.2s;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .btn-cloud:hover { background: var(--primary-container); color: var(--on-primary-container); }
+
+    /* Rappel des records */
+    .record-banner {
+      background: var(--surface-bright); border: 1px solid var(--primary-container);
+      border-radius: 16px; padding: 8px 12px; margin-bottom: 12px;
+      display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;
+    }
+    .record-val { color: var(--prep); font-weight: bold; }
+    .edit-btn { background: transparent; border: none; color: var(--text-sec); cursor: pointer; font-size: 0.75rem; text-decoration: underline; }
+
+    /* Navigation par onglets */
+    .tabs-nav {
+      display: flex; background: var(--surface);
+      border-radius: 100px; padding: 4px; margin-bottom: 16px;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); overflow-x: auto;
+    }
+    .tab-btn {
+      flex: 1; min-width: 65px; background: transparent; border: none;
+      color: var(--text-sec); padding: 8px 4px; font-weight: 600; font-size: 0.75rem;
+      border-radius: 100px; cursor: pointer; transition: all 0.3s ease; white-space: nowrap; text-align: center;
+    }
+    .tab-btn.active {
+      background: var(--primary-container); color: var(--on-primary-container);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
     }
 
-    try {
-      // Exemple d'envoi de la session courante vers Firestore
-      const today = new Date().toISOString().split('T')[0];
-      await db.collection("historique").doc(today).set({
-        date: firebase.firestore.FieldValue.serverTimestamp(),
-        pushups: parseInt(document.getElementById('pushCount').textContent) || 0,
-        source: "Web App CorePushPro"
-      }, { merge: true });
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
 
-      btn.textContent = "☁️ Synchronisé";
-      if (status) status.textContent = "Dernière synchro : " + new Date().toLocaleTimeString();
-      chargerHistoriqueFirestore();
-    } catch (err) {
-      console.error("Erreur lors de la synchronisation Firestore :", err);
-      btn.textContent = "❌ Erreur";
-      if (status) status.textContent = "Erreur de synchro : " + err.message;
+    /* Cartes */
+    .card { 
+      background: var(--surface); border-radius: 24px; padding: 18px; 
+      margin-bottom: 14px; box-shadow: 0 6px 14px rgba(0,0,0,0.4);
+      border: 1px solid rgba(255,255,255,0.06); transition: background-color 0.4s ease; 
     }
-  }
+    
+    .card.mode-prep { background-color: var(--prep-bg); border-color: rgba(253, 226, 147, 0.2); }
+    .card.mode-prep .timer { color: var(--prep); }
+    .card.mode-prep .timer-label { color: var(--prep); }
 
-  // Récupération de l'historique Firestore
-  async function chargerHistoriqueFirestore() {
-    const container = document.getElementById('historiqueList');
-    if (!container || !db) return;
+    .card.mode-work { background-color: var(--work-bg); border-color: rgba(255, 180, 171, 0.2); }
+    .card.mode-work .timer { color: var(--work); }
+    .card.mode-work .timer-label { color: #ffdad6; }
+    
+    .card.mode-rest { background-color: var(--rest-bg); border-color: rgba(142, 222, 204, 0.2); }
+    .card.mode-rest .timer { color: var(--rest); }
+    .card.mode-rest .timer-label { color: #aef5de; }
 
+    h3 { margin-top: 0; color: var(--primary); font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; justify-content: space-between; }
+
+    /* Carrousel Horizontal des Variantes */
+    .variants-scroll {
+      display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 14px;
+      scrollbar-width: none;
+    }
+    .variants-scroll::-webkit-scrollbar { display: none; }
+    
+    .variant-chip {
+      background: var(--surface-bright); border: 1px solid rgba(255,255,255,0.08);
+      color: var(--text-sec); padding: 8px 14px; border-radius: 100px;
+      font-size: 0.75rem; font-weight: 600; white-space: nowrap; cursor: pointer; transition: all 0.2s;
+    }
+    .variant-chip.active { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+    .variant-desc {
+      font-size: 0.75rem; color: var(--text-sec); background: var(--bg);
+      padding: 8px 12px; border-radius: 12px; margin-bottom: 14px; border-left: 3px solid var(--primary);
+    }
+
+    /* Mode Piédestal */
+    .pedestal-mode {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: var(--bg); z-index: 9999; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; padding: 20px; box-sizing: border-box;
+    }
+    .pedestal-mode .timer { font-size: 5.5rem !important; }
+    .pedestal-close {
+      position: absolute; top: 20px; right: 20px; background: var(--surface-bright);
+      color: var(--text); border: none; padding: 10px 20px; border-radius: 20px; font-weight: bold; cursor: pointer;
+    }
+
+    /* Chrono */
+    .timer-container { text-align: center; margin: 10px 0 15px 0; position: relative; }
+    .medal-ring {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -55%);
+      width: 140px; height: 140px; border-radius: 50%;
+      border: 4px solid rgba(255, 255, 255, 0.03); border-top-color: #fde293;
+      opacity: 0; transition: opacity 0.3s; pointer-events: none;
+      box-shadow: 0 0 15px rgba(253, 226, 147, 0.2);
+    }
+    .medal-ring.active { opacity: 1; animation: pulseRing 1.5s infinite; }
+    @keyframes pulseRing { 0% { transform: translate(-50%, -55%) scale(0.95); } 50% { transform: translate(-50%, -55%) scale(1.05); } 100% { transform: translate(-50%, -55%) scale(0.95); } }
+
+    .timer { font-size: 3.5rem; font-variant-numeric: tabular-nums; font-weight: 800; color: var(--primary); position: relative; z-index: 2; }
+    .timer-label { color: var(--text-sec); font-size: 0.8rem; font-weight: 500; height: 16px; }
+    .record-badge { font-size: 0.75rem; color: var(--prep); margin-top: 4px; font-weight: 600; }
+
+    .controls { display: flex; flex-direction: column; gap: 10px; }
+    .row-btn { display: flex; gap: 8px; }
+    
+    .tabata-settings {
+      display: flex; gap: 10px; background: var(--surface-bright);
+      padding: 10px; border-radius: 16px;
+    }
+    .setting-group { flex: 1; display: flex; flex-direction: column; align-items: center; }
+    .setting-group label { font-size: 0.65rem; color: var(--text-sec); margin-bottom: 4px; }
+    .setting-group input {
+      background: var(--bg); border: 1px solid rgba(255,255,255,0.1);
+      color: var(--text); padding: 6px; border-radius: 10px;
+      text-align: center; font-size: 0.9rem; width: 100%; font-weight: bold;
+    }
+    .setting-group input:disabled { opacity: 0.5; }
+
+    button { 
+      border: none; padding: 12px 18px; border-radius: 100px; 
+      font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: transform 0.1s; flex: 1;
+    }
+    button:active { transform: scale(0.96); }
+    
+    .btn-primary { background: var(--primary); color: var(--on-primary); box-shadow: 0 4px 10px rgba(208, 188, 255, 0.2); }
+    .btn-sec { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
+    .btn-tabata { background: var(--work); color: #410002; }
+    .btn-pedestal { background: transparent; border: 1px solid rgba(255,255,255,0.15); color: var(--text-sec); padding: 6px 12px; font-size: 0.75rem; border-radius: 12px; }
+    
+    /* Push-pull UI */
+    .push-counter-display { font-size: 3rem; font-weight: 800; text-align: center; color: var(--primary); margin: 5px 0; }
+    .push-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; }
+    .btn-counter { background: var(--surface-bright); color: var(--text); font-size: 0.95rem; padding: 12px 0; border-radius: 14px; }
+    .btn-counter.plus { background: var(--primary-container); color: var(--on-primary-container); }
+
+    /* Vue fenêtrée à 4 éléments pour la feuille de route */
+    .prog-switcher { display: flex; gap: 8px; margin-bottom: 12px; }
+    .prog-tab { flex: 1; background: var(--surface-bright); border: none; padding: 8px; border-radius: 10px; color: var(--text-sec); font-weight: bold; font-size: 0.8rem; cursor: pointer; }
+    .prog-tab.active { background: var(--primary); color: var(--on-primary); }
+
+    .windowed-program-container {
+      max-height: 280px; overflow-y: auto; padding-right: 4px;
+    }
+    .push-prog-day { background: var(--surface-bright); border-radius: 16px; padding: 12px 16px; margin-bottom: 8px; }
+    .push-prog-header { display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 0.85rem; margin-bottom: 6px; }
+    .push-sets-list { display: flex; gap: 6px; flex-wrap: wrap; }
+    .set-chip { background: var(--bg); border: 1px solid rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 8px; font-size: 0.75rem; cursor: pointer; }
+    .set-chip.checked { background: var(--success); color: #002114; border-color: var(--success); text-decoration: line-through; }
+
+    /* Objectifs multiples */
+    .goals-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+    .goal-box { background: var(--surface-bright); padding: 12px; border-radius: 16px; text-align: center; }
+    .goal-box span { font-size: 0.7rem; color: var(--text-sec); display: block; }
+    .goal-box strong { font-size: 1rem; color: var(--primary); }
+
+    .progress-container { background: rgba(255,255,255,0.06); height: 10px; border-radius: 5px; overflow: hidden; margin-top: 8px; }
+    .progress-bar { background: linear-gradient(90deg, #d0bcff, #efb8c8); height: 100%; width: 0%; transition: width 0.5s ease-out; }
+    .stats-text { display: flex; justify-content: space-between; color: var(--text-sec); font-size: 0.75rem; margin-top: 6px; font-weight: 500; }
+    .chart-container { position: relative; height: 160px; width: 100%; margin-top: 8px; }
+
+    /* Badges */
+    .badges-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; max-height: 450px; overflow-y: auto; padding-right: 4px; }
+    .badge-card { background: var(--surface-bright); border-radius: 16px; padding: 12px; text-align: center; border: 1px solid rgba(255,255,255,0.04); opacity: 0.35; }
+    .badge-card.unlocked { opacity: 1; border-color: var(--primary); background: rgba(79, 55, 139, 0.25); }
+    .badge-icon { font-size: 1.5rem; margin-bottom: 4px; display: block; }
+    .badge-title { font-weight: bold; font-size: 0.8rem; color: var(--text); margin-bottom: 2px; }
+    .badge-desc { font-size: 0.65rem; color: var(--text-sec); }
+
+    /* Calendrier Data */
+    .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-weight: bold; color: var(--primary); font-size: 0.9rem; }
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; }
+    .cal-dow { font-size: 0.7rem; color: var(--text-sec); font-weight: bold; padding-bottom: 4px; }
+    .cal-day {
+      background: var(--surface-bright); border-radius: 12px; aspect-ratio: 1;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      font-size: 0.8rem; cursor: pointer; border: 1px solid rgba(255,255,255,0.03);
+    }
+    .cal-day.empty { background: transparent; border: none; cursor: default; }
+    .cal-day.active-practice { background: var(--primary-container); color: var(--on-primary-container); font-weight: bold; }
+    .day-details-box { margin-top: 12px; background: var(--surface-bright); padding: 12px; border-radius: 14px; font-size: 0.8rem; color: var(--text-sec); }
+    .day-details-box strong { color: var(--text); display: block; margin-bottom: 4px; }
+
+    .btn-danger-outline {
+      background: transparent; color: #ffb4ab; font-size: 0.75rem;
+      padding: 10px; margin-top: 8px; width: 100%; border-radius: 14px;
+      border: 1px dashed rgba(255, 180, 171, 0.3);
+    }
+
+    /* Overlay d'Animation de Célébration */
+    #fxOverlay {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      pointer-events: none; z-index: 999999; overflow: hidden; display: none;
+    }
+    .fx-particle {
+      position: absolute; animation: fallLinear 1.5s ease-in forwards;
+    }
+    @keyframes fallLinear {
+      0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(105vh) rotate(360deg); opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="fxOverlay"></div>
+
+  <header>
+    <h1>Core & Push Pro</h1>
+    <div class="header-info">
+      <span class="streak-badge" id="streakText">🔥 Série : 0 j</span>
+      <span id="voiceToggleSpan" style="cursor:pointer;" onclick="toggleVoice()">🔊 Vocal : ON</span>
+      <button class="btn-cloud" id="btnCloud" onclick="syncCloudFirestore()">☁️ Cloud</button>
+    </div>
+  </header>
+
+  <div class="tabs-nav">
+    <button class="tab-btn active" onclick="switchTab('plank')">Planks</button>
+    <button class="tab-btn" onclick="switchTab('pushup')">Push-pull</button>
+    <button class="tab-btn" onclick="switchTab('badges')">Trophées</button>
+    <button class="tab-btn" onclick="switchTab('dashboard')">Data</button>
+  </div>
+
+  <!-- ================= ONGLET PLANKS ================= -->
+  <div id="plankTab" class="tab-content active">
+    
+    <div class="card" id="timerCard">
+      <div class="record-banner">
+        <span>🏆 Record Plank : <span class="record-val" id="plankRecordDisplay">120 sec</span></span>
+        <button class="edit-btn" onclick="updatePlankRecord()">Modifier</button>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; margin-bottom:-10px;">
+        <button class="btn-pedestal" onclick="togglePedestalMode()">📱 Mode Piédestal</button>
+      </div>
+
+      <div style="margin-top: 10px;">
+        <div class="variants-scroll" id="plankVariantsScroll">
+          <button class="variant-chip active" onclick="selectPlankVariant('Standard', this)">Standard (Faciale)</button>
+          <button class="variant-chip" onclick="selectPlankVariant('Latérale', this)">Latérale</button>
+          <button class="variant-chip" onclick="selectPlankVariant('Sur les mains', this)">Sur les mains</button>
+          <button class="variant-chip" onclick="selectPlankVariant('Superman', this)">Superman (Levé)</button>
+        </div>
+        <div class="variant-desc" id="plankVariantDesc">Focus : Grand droit et transverse (la base du gainage).</div>
+      </div>
+
+      <div class="timer-container">
+        <div class="medal-ring" id="medalRing"></div>
+        <div class="timer" id="display">00:00</div>
+        <div class="timer-label" id="timerLabel">Chrono Libre</div>
+        <div class="record-badge" id="recordBadge">Record : 02:00</div>
+      </div>
+      
+      <div class="controls">
+        <div class="row-btn">
+          <button class="btn-primary" id="startBtn" onclick="toggleStandardTimer()">Chrono Libre</button>
+          <button class="btn-sec" onclick="saveStandardSession()">Valider</button>
+        </div>
+        
+        <div class="tabata-settings">
+          <div class="setting-group">
+            <label>Effort (s)</label>
+            <input type="number" id="workInput" value="20" min="5" max="300">
+          </div>
+          <div class="setting-group">
+            <label>Repos (s)</label>
+            <input type="number" id="restInput" value="10" min="5" max="300">
+          </div>
+        </div>
+        
+        <button class="btn-tabata" id="tabataBtn" onclick="startTabata()">Lancer Tabata (x8)</button>
+      </div>
+    </div>
+
+    <div class="goals-grid">
+      <div class="goal-box">
+        <span>Objectif Semaine</span>
+        <strong id="weekGoalText">0 / 25 min</strong>
+      </div>
+      <div class="goal-box">
+        <span>Objectif Global</span>
+        <strong id="globalGoalText">0 / 600 min</strong>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Évolution Quotidienne (Secondes)</h3>
+      <div class="chart-container">
+        <canvas id="plankChart"></canvas>
+      </div>
+    </div>
+
+    <button class="btn-danger-outline" onclick="resetData('plank')">Réinitialiser l'historique Planks</button>
+  </div>
+
+
+  <!-- ================= ONGLET PUSH-PULL ================= -->
+  <div id="pushupTab" class="tab-content">
+    
+    <div class="card">
+      <div class="record-banner">
+        <span>🏆 Record Pompes : <span class="record-val" id="pushRecordDisplay">31 réps</span></span>
+        <button class="edit-btn" onclick="updatePushRecord()">Modifier</button>
+      </div>
+
+      <div class="variants-scroll" id="pushVariantsScroll">
+        <button class="variant-chip active" onclick="selectPushVariant('Standard', this)">Standard</button>
+        <button class="variant-chip" onclick="selectPushVariant('Serrées (Diamond)', this)">Serrées (Diamond)</button>
+        <button class="variant-chip" onclick="selectPushVariant('Inclinées', this)">Inclinées</button>
+        <button class="variant-chip" onclick="selectPushVariant('Déclinées', this)">Déclinées</button>
+      </div>
+      <div class="variant-desc" id="pushVariantDesc">Focus : Pectoraux et triceps (largeur épaules).</div>
+
+      <div class="timer-container" style="margin-bottom: 5px;">
+        <div class="push-counter-display" id="currentPushCount">0</div>
+        <div class="timer-label">Série en cours</div>
+      </div>
+
+      <div class="push-actions">
+        <button class="btn-counter" onclick="adjustPush(-5)">-5</button>
+        <button class="btn-counter" onclick="adjustPush(-1)">-1</button>
+        <button class="btn-counter plus" onclick="adjustPush(1)">+1</button>
+      </div>
+      <div class="row-btn">
+        <button class="btn-counter" onclick="adjustPush(5)" style="flex:1">+5</button>
+        <button class="btn-counter plus" onclick="adjustPush(10)" style="flex:1">+10</button>
+      </div>
+
+      <div style="margin-top: 12px;">
+        <button class="btn-primary" style="width: 100%;" onclick="savePushSession()">Enregistrer la série</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Objectif : 100 d'affilée</h3>
+      <div class="progress-container">
+        <div class="progress-bar" id="pushProgressBar"></div>
+      </div>
+      <div class="stats-text">
+        <span>Record Personnel : <strong id="pushRecord">31</strong> reps</span>
+        <span>Cible : 100</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Feuille de Route Progressive</h3>
+      <div class="prog-switcher">
+        <button class="prog-tab active" id="btnSeries1" onclick="switchSeries(1)">Série 1 (15 jours)</button>
+        <button class="prog-tab" id="btnSeries2" onclick="switchSeries(2)">Série 2 (Objectif 50)</button>
+      </div>
+      <div class="windowed-program-container" id="pushProgramContainer"></div>
+    </div>
+
+    <div class="card">
+      <h3>Volume Quotidien</h3>
+      <div class="chart-container">
+        <canvas id="pushupChart"></canvas>
+      </div>
+    </div>
+
+    <button class="btn-danger-outline" onclick="resetData('pushup')">Réinitialiser l'historique Push-pull</button>
+  </div>
+
+
+  <!-- ================= ONGLET TROPHÉES ================= -->
+  <div id="badgesTab" class="tab-content">
+    <div class="card">
+      <h3>🏆 Hall des 50 Trophées</h3>
+      <p style="font-size:0.7rem; color:var(--text-sec); margin-top:0; margin-bottom:12px;">Débloquez vos accomplissements au fil de l'entraînement.</p>
+      <div class="badges-grid" id="badgesContainer"></div>
+    </div>
+  </div>
+
+
+  <!-- ================= ONGLET DATA ================= -->
+  <div id="dashboardTab" class="tab-content">
+    
+    <div class="card">
+      <h3>🏆 Records en mémoire</h3>
+      <div style="font-size: 0.85rem; margin-bottom: 12px;">
+        <div>• Gainage : <strong id="dashPlankRecord">120 sec</strong></div>
+        <div>• Pompes : <strong id="dashPushRecord">31 réps</strong></div>
+      </div>
+
+      <div class="cal-header">
+        <button style="background:transparent; color:var(--primary); font-size:1rem; padding:4px;" onclick="changeMonth(-1)">◀</button>
+        <span id="calMonthTitle">Mois Année</span>
+        <button style="background:transparent; color:var(--primary); font-size:1rem; padding:4px;" onclick="changeMonth(1)">▶</button>
+      </div>
+      
+      <div class="cal-grid">
+        <div class="cal-dow">lu</div><div class="cal-dow">ma</div><div class="cal-dow">me</div>
+        <div class="cal-dow">je</div><div class="cal-dow">ve</div><div class="cal-dow">sa</div><div class="cal-dow">di</div>
+      </div>
+      <div class="cal-grid" id="calGridDays" style="margin-top:6px;"></div>
+
+      <div class="day-details-box" id="dayDetailsBox">
+        <strong>Détails du jour</strong>
+        <span id="dayDetailsText">Cliquez sur une date colorée pour voir le rappel des exercices.</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>☁️ Connexion Cloud Firestore</h3>
+      <div id="historiqueStatus" style="color: var(--text-sec); font-size: 0.8rem; margin-bottom: 8px;">Cliquez sur ☁️ Cloud pour synchroniser vos sessions.</div>
+      <button class="btn-primary" style="width: 100%; margin-bottom: 12px;" onclick="syncCloudFirestore()">Lancer la synchronisation</button>
+    </div>
+
+    <div class="card">
+      <h3>Sauvegarde & Export Santé</h3>
+      <p style="font-size:0.8rem; color:var(--text-sec); line-height:1.4;">
+        Générez un fichier CSV compatible Google Health Connect ou copiez votre sauvegarde.
+      </p>
+      <div style="display: flex; gap: 8px; margin-top: 12px;">
+        <button class="btn-primary" onclick="exportToCSV()">Exporter CSV</button>
+        <button class="btn-sec" onclick="triggerBackup()">Copier</button>
+      </div>
+    </div>
+
+    <button class="btn-danger-outline" onclick="resetData('all')">Remise à zéro complète</button>
+  </div>
+
+
+  <!-- Modal Mode Piédestal -->
+  <div id="pedestalModal" class="pedestal-mode" style="display:none;">
+    <button class="pedestal-close" onclick="togglePedestalMode()">Fermer ✕</button>
+    <div style="font-size: 1.2rem; color: var(--prep); margin-bottom: 10px;">MODE PIÉDESTAL</div>
+    <div class="timer" id="pedestalDisplay">00:00</div>
+  </div>
+
+
+  <script>
+    /* ================= INITIALISATION DES RECORDS ================= */
+    let records = {
+      plank: parseInt(localStorage.getItem('record_plank')) || 120,
+      push: parseInt(localStorage.getItem('record_push')) || 31
+    };
+
+    function displayRecords() {
+      document.getElementById('plankRecordDisplay').textContent = records.plank + ' sec';
+      document.getElementById('pushRecordDisplay').textContent = records.push + ' réps';
+      document.getElementById('dashPlankRecord').textContent = records.plank + ' sec';
+      document.getElementById('dashPushRecord').textContent = records.push + ' réps';
+    }
+
+    function updatePlankRecord() {
+      const val = prompt("Nouveau record de Gainage (secondes) :", records.plank);
+      if (val !== null && !isNaN(val) && val > 0) {
+        records.plank = parseInt(val);
+        localStorage.setItem('record_plank', records.plank);
+        displayRecords();
+        updateStandardDisplay();
+        saveRecordsToFirestore();
+      }
+    }
+
+    function updatePushRecord() {
+      const val = prompt("Nouveau record de Pompes (répétitions) :", records.push);
+      if (val !== null && !isNaN(val) && val > 0) {
+        records.push = parseInt(val);
+        localStorage.setItem('record_push', records.push);
+        displayRecords();
+        updatePushupStats();
+        saveRecordsToFirestore();
+      }
+    }
+
+    /* ================= CONFIGURATION & INITIALISATION FIREBASE ================= */
+    const firebaseConfig = {
+      apiKey: window.env?.FIREBASE_API_KEY || "AIzaSy_REPLACE_IF_NEEDED",
+      authDomain: window.env?.FIREBASE_AUTH_DOMAIN || "corepushpro.firebaseapp.com",
+      projectId: window.env?.FIREBASE_PROJECT_ID || "corepushpro",
+      storageBucket: window.env?.FIREBASE_STORAGE_BUCKET || "corepushpro.firebasestorage.app",
+      messagingSenderId: window.env?.FIREBASE_MESSAGING_SENDER_ID || "123456789",
+      appId: window.env?.FIREBASE_APP_ID || "1:123456789:web:abc123def"
+    };
+
+    let db;
     try {
-      const snapshot = await db.collection("historique").limit(10).get();
-      container.innerHTML = "";
+      if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+      }
+      db = firebase.firestore();
+      loadRecordsFromFirestore();
+    } catch (e) {
+      console.error("Erreur Firebase :", e);
+    }
 
-      if (snapshot.empty) {
-        container.innerHTML = "<div style='color:var(--text-sec); padding:8px;'>Aucun historique trouvé.</div>";
+    async function saveRecordsToFirestore() {
+      if (!db) return;
+      try {
+        await db.collection("utilisateur").doc("records").set(records, { merge: true });
+      } catch (e) { console.error("Erreur de sauvegarde des records sur Firestore :", e); }
+    }
+
+    async function loadRecordsFromFirestore() {
+      if (!db) return;
+      try {
+        const doc = await db.collection("utilisateur").doc("records").get();
+        if (doc.exists) {
+          const data = doc.data();
+          if (data.plank) records.plank = data.plank;
+          if (data.push) records.push = data.push;
+          localStorage.setItem('record_plank', records.plank);
+          localStorage.setItem('record_push', records.push);
+          displayRecords();
+        }
+      } catch (e) { console.error("Erreur de chargement des records :", e); }
+    }
+
+    async function syncCloudFirestore() {
+      const btn = document.getElementById('btnCloud');
+      const status = document.getElementById('historiqueStatus');
+      btn.textContent = "🔄 ...";
+      
+      if (!db) {
+        alert("Firestore non connecté.");
+        btn.textContent = "❌ Erreur";
         return;
       }
 
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        const item = document.createElement('div');
-        item.className = 'historique-item';
-        item.innerHTML = `
-          <span>📅 ${doc.id}</span>
-          <span>💪 ${data.pushups || 0} pompes</span>
-        `;
-        container.appendChild(item);
-      });
-    } catch (e) {
-      console.error("Erreur de chargement de l'historique :", e);
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        await db.collection("historique").doc(today).set({
+          date: firebase.firestore.FieldValue.serverTimestamp(),
+          planks: JSON.parse(localStorage.getItem('planksHistory')) || [],
+          pushups: JSON.parse(localStorage.getItem('pushupHistory')) || [],
+          records: records,
+          source: "Web App CorePushPro"
+        }, { merge: true });
+
+        await saveRecordsToFirestore();
+
+        btn.textContent = "☁️ Synchronisé";
+        if (status) status.textContent = "Dernière synchro : " + new Date().toLocaleTimeString();
+      } catch (err) {
+        console.error("Erreur Cloud :", err);
+        btn.textContent = "❌ Erreur";
+      }
     }
-  }
 
-  // Logique du compteur de pompes
-  let pushs = 0;
-  function addPushups(val) {
-    pushs += val;
-    document.getElementById('pushCount').textContent = pushs;
-  }
-  function resetPushups() {
-    pushs = 0;
-    document.getElementById('pushCount').textContent = pushs;
-  }
+    /* ================= SYNTHÈSE SONORE (WEB AUDIO API) ================= */
+    let audioCtx = null;
+    function getAudioContext() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      return audioCtx;
+    }
 
-  // Toggle vocal factice
-  let voiceOn = true;
-  function toggleVoice() {
-    voiceOn = !voiceOn;
-    document.getElementById('voiceToggleSpan').textContent = voiceOn ? "🔊 Vocal : ON" : "🔇 Vocal : OFF";
-  }
+    function playSound(type) {
+      try {
+        const ctx = getAudioContext();
+        if (ctx.state === 'suspended') ctx.resume();
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
 
-  // Chrono factice
-  let running = false;
-  function toggleStandardTimer() {
-    running = !running;
-    document.getElementById('startBtn').textContent = running ? "Pause" : "Start Libre";
-  }
- </script>  
-</body>  
+        if (type === 'pop') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(400, now);
+          osc.frequency.exponentialRampToValueAtTime(800, now + 0.08);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+          osc.start(now); osc.stop(now + 0.08);
+        } else if (type === 'success') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(523.25, now);
+          osc.frequency.setValueAtTime(659.25, now + 0.1);
+          osc.frequency.setValueAtTime(783.99, now + 0.2);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+          osc.start(now); osc.stop(now + 0.5);
+        } else if (type === 'record') {
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(440, now);
+          osc.frequency.setValueAtTime(554.37, now + 0.15);
+          osc.frequency.setValueAtTime(659.25, now + 0.3);
+          osc.frequency.setValueAtTime(880, now + 0.45);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.7);
+          osc.start(now); osc.stop(now + 0.7);
+        } else if (type === 'tabata') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(300, now);
+          osc.frequency.exponentialRampToValueAtTime(600, now + 0.4);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+          osc.start(now); osc.stop(now + 0.6);
+        } else if (type === 'badge') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(587.33, now);
+          osc.frequency.setValueAtTime(880, now + 0.12);
+          osc.frequency.setValueAtTime(1174.66, now + 0.24);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+          osc.start(now); osc.stop(now + 0.6);
+        }
+      } catch(e){}
+    }
+
+    /* ================= SYSTÈMES D'ANIMATIONS VISUELLES (FX) ================= */
+    function triggerFX(fxType) {
+      const overlay = document.getElementById('fxOverlay');
+      overlay.innerHTML = '';
+      overlay.style.display = 'block';
+
+      let count = 35;
+      let symbols = ['✨', '🌟', '💥'];
+      if (fxType === 'flames') symbols = ['🔥', '⚡', '🟧'];
+      if (fxType === 'confetti') symbols = ['🎉', '🎊', '🟢', '🔵', '🟣', '🟡'];
+      if (fxType === 'fireworks') symbols = ['🎆', '✨', '💥', '⭐'];
+      if (fxType === 'shockwave') symbols = ['🔵', '💫', '⚡'];
+
+      for (let i = 0; i < count; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'fx-particle';
+        particle.innerText = symbols[Math.floor(Math.random() * symbols.length)];
+        particle.style.left = Math.random() * 100 + 'vw';
+        particle.style.top = (Math.random() * -20) + 'px';
+        particle.style.fontSize = (Math.random() * 1.2 + 0.8) + 'rem';
+        particle.style.animationDuration = (Math.random() * 1 + 0.8) + 's';
+        particle.style.animationDelay = (Math.random() * 0.3) + 's';
+        overlay.appendChild(particle);
+      }
+
+      setTimeout(() => { overlay.style.display = 'none'; overlay.innerHTML = ''; }, 2000);
+    }
+
+    /* ================= INITIALISATION HISTORIQUE ================= */
+    if (!localStorage.getItem('initialized_history_v7')) {
+      const initialPlanks = [
+        { date: '2026-09-15', seconds: 141, variant: 'Standard' },
+        { date: '2026-09-22', seconds: 100, variant: 'Standard' },
+        { date: '2026-09-23', seconds: 160, variant: 'Standard' }
+      ];
+      const initialPush = [
+        { date: '2026-09-22', count: 30, variant: 'Standard' },
+        { date: '2026-09-23', count: 31, variant: 'Standard' }
+      ];
+      localStorage.setItem('planksHistory', JSON.stringify(initialPlanks));
+      localStorage.setItem('pushupHistory', JSON.stringify(initialPush));
+      localStorage.setItem('initialized_history_v7', 'true');
+    }
+
+    /* ================= GESTION DES VARIANTES ================= */
+    let selectedPlankVariant = 'Standard';
+    let selectedPushVariant = 'Standard';
+
+    const plankDescriptions = {
+      'Standard': 'Focus : Grand droit et transverse (la base du gainage).',
+      'Latérale': 'Focus : Obliques et stabilité latérale.',
+      'Sur les mains': 'Focus : Transfert de poids et gainage haut du corps.',
+      'Superman': 'Focus : Lombaires et chaîne postérieure par déséquilibre.'
+    };
+
+    const pushDescriptions = {
+      'Standard': 'Focus : Pectoraux et triceps (largeur épaules).',
+      'Serrées (Diamond)': 'Focus : Triceps accentués et intérieur des pecs.',
+      'Inclinées': 'Focus : Idéal pour progresser ou finir une série en douceur.',
+      'Déclinées': 'Focus : Haut des pectoraux et épaules.'
+    };
+
+    function selectPlankVariant(variant, btn) {
+      selectedPlankVariant = variant;
+      document.querySelectorAll('#plankVariantsScroll .variant-chip').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('plankVariantDesc').innerText = plankDescriptions[variant];
+      playSound('pop');
+    }
+
+    function selectPushVariant(variant, btn) {
+      selectedPushVariant = variant;
+      document.querySelectorAll('#pushVariantsScroll .variant-chip').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('pushVariantDesc').innerText = pushDescriptions[variant];
+      playSound('pop');
+    }
+
+    /* ================= COACH VOCAL ================= */
+    let voiceEnabled = true;
+    function toggleVoice() {
+      voiceEnabled = !voiceEnabled;
+      document.getElementById('voiceToggleSpan').innerText = voiceEnabled ? "🔊 Vocal : ON" : "🔇 Vocal : OFF";
+      playSound('pop');
+    }
+    function speak(text) {
+      if (!voiceEnabled || !('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'fr-FR';
+      window.speechSynthesis.speak(utterance);
+    }
+
+    /* ================= NAVIGATION ================= */
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      playSound('pop');
+      
+      if(tabName === 'plank') {
+        document.getElementById('plankTab').classList.add('active');
+        document.querySelectorAll('.tab-btn')[0].classList.add('active');
+        updatePlankChart();
+      } else if(tabName === 'pushup') {
+        document.getElementById('pushupTab').classList.add('active');
+        document.querySelectorAll('.tab-btn')[1].classList.add('active');
+        updatePushupChart();
+      } else if(tabName === 'badges') {
+        document.getElementById('badgesTab').classList.add('active');
+        document.querySelectorAll('.tab-btn')[2].classList.add('active');
+        renderBadges();
+      } else {
+        document.getElementById('dashboardTab').classList.add('active');
+        document.querySelectorAll('.tab-btn')[3].classList.add('active');
+        renderCalendar();
+      }
+    }
+
+    /* ================= NATIVES API ================= */
+    let wakeLock = null;
+    async function requestWakeLock() {
+      if ('wakeLock' in navigator) { try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e){} }
+    }
+    function releaseWakeLock() { if (wakeLock) { wakeLock.release(); wakeLock = null; } }
+    document.addEventListener('visibilitychange', async () => {
+      if (document.visibilityState === 'visible' && (isStandardRunning || isTabataRunning)) { await requestWakeLock(); }
+    });
+    function triggerVibration(pattern) { if ("vibrate" in navigator) navigator.vibrate(pattern); }
+
+    let isPedestalActive = false;
+    function togglePedestalMode() {
+      isPedestalActive = !isPedestalActive;
+      document.getElementById('pedestalModal').style.display = isPedestalActive ? 'flex' : 'none';
+      playSound('pop');
+    }
+
+    /* ================= STREAKS ================= */
+    function calculateStreak() {
+      const plankHistory = JSON.parse(localStorage.getItem('planksHistory')) || [];
+      const pushupHistory = JSON.parse(localStorage.getItem('pushupHistory')) || [];
+      const dates = new Set();
+      plankHistory.forEach(h => dates.add(h.date));
+      pushupHistory.forEach(h => dates.add(h.date));
+
+      let streak = 0;
+      let d = new Date();
+      while (true) {
+        const dateKey = d.toISOString().split('T')[0];
+        if (dates.has(dateKey)) {
+          streak++; d.setDate(d.getDate() - 1);
+        } else {
+          if (streak === 0) {
+            d.setDate(d.getDate() - 1);
+            const prevKey = d.toISOString().split('T')[0];
+            if (dates.has(prevKey)) { streak++; d.setDate(d.getDate() - 1); continue; }
+          }
+          break;
+        }
+      }
+      document.getElementById('streakText').innerText = `🔥 Série : ${streak} j`;
+      return streak;
+    }
+
+    /* ================= MODULE 1 : PLANKS ================= */
+    let interval = null;
+    let plankChartInstance = null;
+    let plankHistory = JSON.parse(localStorage.getItem('planksHistory')) || [];
+    let standardSecs = 0; 
+    let isStandardRunning = false;
+    let isTabataRunning = false;
+    let tabataPhase = 'prep'; 
+    let tabataCycle = 1;
+    let tabataTimeLeft = 15;
+
+    const display = document.getElementById('display');
+    const pedestalDisplay = document.getElementById('pedestalDisplay');
+    const timerLabel = document.getElementById('timerLabel');
+    const timerCard = document.getElementById('timerCard');
+    const medalRing = document.getElementById('medalRing');
+    const recordBadge = document.getElementById('recordBadge');
+
+    function updateStandardDisplay() {
+      const m = Math.floor(standardSecs / 60);
+      const s = standardSecs % 60;
+      const timeStr = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+      display.innerText = timeStr; pedestalDisplay.innerText = timeStr;
+
+      const maxSecs = Math.max(records.plank, plankHistory.length > 0 ? Math.max(...plankHistory.map(h => h.seconds)) : 0);
+      recordBadge.innerText = `Record : ${Math.floor(maxSecs/60).toString().padStart(2,'0')}:${(maxSecs%60).toString().padStart(2,'0')}`;
+
+      if (maxSecs > 15 && standardSecs >= maxSecs * 0.8) medalRing.classList.add('active');
+      else medalRing.classList.remove('active');
+    }
+
+    function toggleStandardTimer() {
+      if (isTabataRunning) return; 
+      playSound('pop');
+      const btn = document.getElementById('startBtn');
+      if (isStandardRunning) {
+        clearInterval(interval); isStandardRunning = false; releaseWakeLock();
+        btn.innerText = 'Reprendre'; medalRing.classList.remove('active');
+      } else {
+        requestWakeLock(); timerCard.className = 'card'; timerLabel.innerText = "Chrono Libre";
+        isStandardRunning = true; interval = setInterval(() => { standardSecs++; updateStandardDisplay(); }, 1000);
+        btn.innerText = 'Pause';
+      }
+    }
+
+    function saveStandardSession() {
+      if (standardSecs === 0 || isTabataRunning) return;
+      clearInterval(interval); isStandardRunning = false; releaseWakeLock(); medalRing.classList.remove('active');
+      if(isPedestalActive) togglePedestalMode();
+      
+      const maxBefore = Math.max(records.plank, plankHistory.length > 0 ? Math.max(...plankHistory.map(h => h.seconds)) : 0);
+      saveToPlankHistory(standardSecs);
+
+      if (standardSecs > maxBefore) {
+        records.plank = standardSecs;
+        localStorage.setItem('record_plank', records.plank);
+        displayRecords();
+        saveRecordsToFirestore();
+        triggerVibration([300, 150, 300, 150, 500]); 
+        playSound('record'); triggerFX('fireworks');
+        speak("Nouveau record personnel !");
+      } else {
+        playSound('success'); triggerFX('confetti');
+      }
+      standardSecs = 0; updateStandardDisplay();
+      document.getElementById('startBtn').innerText = 'Chrono Libre'; timerCard.className = 'card'; 
+    }
+
+    function updateTabataDisplay() {
+      const timeStr = `00:${tabataTimeLeft.toString().padStart(2, '0')}`;
+      display.innerText = timeStr; pedestalDisplay.innerText = timeStr;
+      if (tabataPhase === 'prep') { 
+        timerCard.className = 'card mode-prep'; 
+        timerLabel.innerText = tabataTimeLeft <= 10 ? `⚠️ DÉPART DANS ${tabataTimeLeft}s` : `PRÉPARATION...`; 
+      }
+      else if (tabataPhase === 'work') { timerCard.className = 'card mode-work'; timerLabel.innerText = `EFFORT - Cycle ${tabataCycle}/8`; }
+      else { timerCard.className = 'card mode-rest'; timerLabel.className = 'card mode-rest'; timerLabel.innerText = `REPOS - Cycle ${tabataCycle}/8`; }
+    }
+
+    function startTabata() {
+      if (isStandardRunning) return; 
+      playSound('pop');
+      const btn = document.getElementById('tabataBtn');
+      if (isTabataRunning) {
+        clearInterval(interval); isTabataRunning = false; releaseWakeLock();
+        document.getElementById('workInput').disabled = false; document.getElementById('restInput').disabled = false;
+        btn.innerText = 'Lancer Tabata (x8)'; display.innerText = "00:00"; timerCard.className = 'card'; return;
+      }
+
+      const workDur = parseInt(document.getElementById('workInput').value) || 20;
+      const restDur = parseInt(document.getElementById('restInput').value) || 10;
+      document.getElementById('workInput').disabled = true; document.getElementById('restInput').disabled = true;
+
+      requestWakeLock(); isTabataRunning = true; tabataPhase = 'prep'; tabataCycle = 1; tabataTimeLeft = 15;
+      btn.innerText = 'Stopper'; speak("Préparez-vous, quinze secondes"); updateTabataDisplay();
+
+      interval = setInterval(() => {
+        tabataTimeLeft--;
+        if (tabataTimeLeft === 10) speak("Dix secondes");
+        if (tabataTimeLeft < 0) {
+          if (tabataPhase === 'prep') { tabataPhase = 'work'; tabataTimeLeft = workDur; triggerVibration([500]); speak("Effort"); }
+          else if (tabataPhase === 'work') { tabataPhase = 'rest'; tabataTimeLeft = restDur; triggerVibration([150, 100, 150]); speak("Repos"); }
+          else {
+            tabataCycle++;
+            if (tabataCycle > 8) { endTabata(workDur); return; }
+            tabataPhase = 'work'; tabataTimeLeft = workDur; triggerVibration([500]); speak("Effort");
+          }
+        }
+        updateTabataDisplay();
+      }, 1000);
+    }
+
+    function endTabata(workDur) {
+      clearInterval(interval); isTabataRunning = false; releaseWakeLock();
+      document.getElementById('workInput').disabled = false; document.getElementById('restInput').disabled = false;
+      document.getElementById('tabataBtn').innerText = 'Lancer Tabata (x8)'; timerCard.className = 'card'; 
+      if(isPedestalActive) togglePedestalMode();
+      
+      const totalSecs = 8 * workDur;
+      saveToPlankHistory(totalSecs);
+      triggerVibration([500, 200, 500, 200, 1000]); 
+      playSound('tabata'); triggerFX('shockwave');
+      speak("Tabata terminé avec succès !");
+      display.innerText = "00:00"; timerLabel.innerText = `Tabata validé (+${totalSecs}s)`;
+    }
+
+    function saveToPlankHistory(secs) {
+      const dateKey = new Date().toISOString().split('T')[0];
+      plankHistory.push({ date: dateKey, seconds: secs, variant: selectedPlankVariant });
+      localStorage.setItem('planksHistory', JSON.stringify(plankHistory));
+      updatePlankStats(); calculateStreak();
+    }
+
+    function updatePlankStats() {
+      const dailyMap = {};
+      plankHistory.forEach(item => { dailyMap[item.date] = (dailyMap[item.date] || 0) + item.seconds; });
+
+      const totalAllSecs = Object.values(dailyMap).reduce((a,b)=>a+b, 0);
+      document.getElementById('globalGoalText').innerText = `${Math.floor(totalAllSecs / 60)} / 600 min`;
+
+      const now = new Date(); let weekSecs = 0;
+      Object.keys(dailyMap).forEach(dStr => {
+        if(Math.ceil(Math.abs(now - new Date(dStr)) / (1000 * 60 * 60 * 24)) <= 7) weekSecs += dailyMap[dStr];
+      });
+      document.getElementById('weekGoalText').innerText = `${Math.floor(weekSecs / 60)} / 25 min`;
+
+      updatePlankChart(dailyMap); updateStandardDisplay();
+    }
+
+    function updatePlankChart(dailyMap) {
+      const sortedKeys = Object.keys(dailyMap).sort().slice(-7);
+      const labels = sortedKeys.map(k => `${k.split('-')[2]}/${k.split('-')[1]}`);
+      const dataPoints = sortedKeys.map(k => dailyMap[k]);
+      const maxVal = dataPoints.length > 0 ? Math.max(...dataPoints) : 0;
+
+      const ctx = document.getElementById('plankChart').getContext('2d');
+      if (plankChartInstance) plankChartInstance.destroy();
+
+      plankChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: { labels: labels, datasets: [{ data: dataPoints, backgroundColor: 'rgba(208, 188, 255, 0.4)', borderColor: '#d0bcff', borderWidth: 2, borderRadius: 6 }] },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { min: 30, max: maxVal > 300 ? 500 : 300, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#cac4d0' } },
+            x: { grid: { display: false }, ticks: { color: '#cac4d0' } }
+          }
+        }
+      });
+    }
+
+    /* ================= MODULE 2 : PUSH-PULL ================= */
+    let currentPushCount = 0;
+    let pushupChartInstance = null;
+    let pushupHistory = JSON.parse(localStorage.getItem('pushupHistory')) || [];
+    let currentSeries = 1;
+
+    const series1Days = Array.from({length: 15}, (_, i) => ({
+      day: i + 1,
+      sets: [4 + i, 4 + Math.floor(i/2), 3 + Math.floor(i/2), 3, 2],
+      done: false
+    }));
+
+    const series2Days = Array.from({length: 15}, (_, i) => ({
+      day: i + 1,
+      sets: [10 + i, 8 + i, 6 + i, 5 + i, 4 + i],
+      done: false
+    })).concat([{ day: 16, type: 'defi', target: 50, label: "Défi Ultime : 50 d'affilée !", done: false }]);
+
+    let stateSeries1 = JSON.parse(localStorage.getItem('pushProgSeries1')) || series1Days;
+    let stateSeries2 = JSON.parse(localStorage.getItem('pushProgSeries2')) || series2Days;
+
+    function switchSeries(num) {
+      currentSeries = num;
+      playSound('pop');
+      document.getElementById('btnSeries1').className = `prog-tab ${num === 1 ? 'active' : ''}`;
+      document.getElementById('btnSeries2').className = `prog-tab ${num === 2 ? 'active' : ''}`;
+      renderPushProgram();
+    }
+
+    function renderPushProgram() {
+      const container = document.getElementById('pushProgramContainer');
+      container.innerHTML = '';
+      const currentState = currentSeries === 1 ? stateSeries1 : stateSeries2;
+
+      currentState.forEach((item, dayIndex) => {
+        const div = document.createElement('div');
+        div.className = `push-prog-day ${item.done ? 'completed' : ''}`;
+        
+        let headerText = item.type === 'defi' ? item.label : `Jour ${item.day} : ${item.sets.join(' - ')}`;
+        let chipsHtml = '';
+        
+        if(item.sets) {
+          chipsHtml = `<div class="push-sets-list">` + item.sets.map((val, setIdx) => `
+            <span class="set-chip ${item.setsDone && item.setsDone[setIdx] ? 'checked' : ''}" 
+                  onclick="toggleSet(${dayIndex}, ${setIdx})">S${setIdx+1}: ${val} reps</span>
+          `).join('') + `</div>`;
+        } else {
+          chipsHtml = `<div class="push-sets-list"><span class="set-chip ${item.done ? 'checked' : ''}" onclick="toggleDefi(${dayIndex})">Valider le Défi (50 reps)</span></div>`;
+        }
+
+        div.innerHTML = `
+          <div class="push-prog-header"><span>${headerText}</span><span>${item.done ? 'Validé' : 'En cours'}</span></div>
+          ${chipsHtml}
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function toggleSet(dayIdx, setIdx) {
+      playSound('pop');
+      const currentState = currentSeries === 1 ? stateSeries1 : stateSeries2;
+      const dayObj = currentState[dayIdx];
+      if(!dayObj.setsDone) dayObj.setsDone = [false, false, false, false, false];
+      dayObj.setsDone[setIdx] = !dayObj.setsDone[setIdx];
+      
+      const wasDone = dayObj.done;
+      dayObj.done = dayObj.setsDone.every(Boolean);
+      
+      if(dayObj.done && !wasDone) {
+        triggerVibration([150, 100, 150]);
+        playSound('success'); triggerFX('confetti');
+      }
+
+      localStorage.setItem(currentSeries === 1 ? 'pushProgSeries1' : 'pushProgSeries2', JSON.stringify(currentState));
+      renderPushProgram();
+    }
+
+    function toggleDefi(dayIdx) {
+      const currentState = stateSeries2;
+      const dayObj = currentState[dayIdx];
+      dayObj.done = !dayObj.done;
+      if(dayObj.done) { 
+        triggerVibration([300, 100, 300]); 
+        playSound('record'); triggerFX('fireworks');
+        speak("Défi 50 pompes réussi !"); 
+      }
+      localStorage.setItem('pushProgSeries2', JSON.stringify(currentState));
+      renderPushProgram();
+    }
+
+    function adjustPush(amount) {
+      currentPushCount = Math.max(0, currentPushCount + amount);
+      document.getElementById('currentPushCount').innerText = currentPushCount;
+      triggerVibration([25]);
+      playSound('pop');
+    }
+
+    function savePushSession() {
+      if (currentPushCount === 0) return;
+      const maxBefore = Math.max(records.push, pushupHistory.length > 0 ? Math.max(...pushupHistory.map(s => s.count)) : 0);
+      
+      pushupHistory.push({ date: new Date().toISOString().split('T')[0], count: currentPushCount, variant: selectedPushVariant });
+      localStorage.setItem('pushupHistory', JSON.stringify(pushupHistory));
+      
+      if (currentPushCount > maxBefore) { 
+        records.push = currentPushCount;
+        localStorage.setItem('record_push', records.push);
+        displayRecords();
+        saveRecordsToFirestore();
+        triggerVibration([300, 150, 300]); 
+        playSound('record'); triggerFX('fireworks');
+        speak("Nouveau record de pompes !"); 
+      } else { 
+        triggerVibration([100, 50, 100]); 
+        playSound('success'); triggerFX('flames');
+      }
+
+      currentPushCount = 0; document.getElementById('currentPushCount').innerText = 0;
+      updatePushupStats(); calculateStreak();
+    }
+
+    function updatePushupStats() {
+      const maxRecord = Math.max(records.push, pushupHistory.length > 0 ? Math.max(...pushupHistory.map(s => s.count)) : 0);
+      document.getElementById('pushRecord').innerText = maxRecord;
+      document.getElementById('pushProgressBar').style.width = `${Math.min((maxRecord / 100) * 100, 100)}%`;
+
+      const dailyMap = {};
+      pushupHistory.forEach(item => { dailyMap[item.date] = (dailyMap[item.date] || 0) + item.count; });
+      updatePushupChart(dailyMap);
+    }
+
+    function updatePushupChart(dailyMap) {
+      const sortedKeys = Object.keys(dailyMap).sort().slice(-7);
+      const ctx = document.getElementById('pushupChart').getContext('2d');
+      if (pushupChartInstance) pushupChartInstance.destroy();
+
+      pushupChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: sortedKeys.map(k => `${k.split('-')[2]}/${k.split('-')[1]}`),
+          datasets: [{ data: sortedKeys.map(k => dailyMap[k]), backgroundColor: 'rgba(208, 188, 255, 0.4)', borderColor: '#d0bcff', borderWidth: 2, borderRadius: 6 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#cac4d0' } }, x: { grid: { display: false }, ticks: { color: '#cac4d0' } } }
+        }
+      });
+    }
+
+    /* ================= MODULE 3 : 50 BADGES ================= */
+    function renderBadges() {
+      const totalPlankSecs = plankHistory.reduce((acc, h) => acc + h.seconds, 0);
+      const maxPush = Math.max(records.push, pushupHistory.length > 0 ? Math.max(...pushupHistory.map(s => s.count)) : 0);
+      const streak = calculateStreak();
+
+      const badges = [];
+      for(let i=1; i<=15; i++) badges.push({ icon: '🧱', title: `Maçon ${i}`, desc: `Cumuler ${i*5} min`, unlocked: totalPlankSecs >= i*300 });
+      for(let i=1; i<=15; i++) badges.push({ icon: '💪', title: `Force ${i}`, desc: `Atteindre ${i*10} reps`, unlocked: maxPush >= i*10 });
+      for(let i=1; i<=15; i++) badges.push({ icon: '🔥', title: `Flamme ${i}`, desc: `Série de ${i} jours`, unlocked: streak >= i });
+      
+      badges.push({ icon: '⚡', title: 'Premier Pas', desc: 'Première session', unlocked: plankHistory.length > 0 || pushupHistory.length > 0 });
+      badges.push({ icon: '🚀', title: 'Explosion', desc: 'Plus de 50 pompes', unlocked: maxPush >= 50 });
+      badges.push({ icon: '👑', title: 'Maître Tabata', desc: 'Tabata complet', unlocked: plankHistory.some(h => h.seconds >= 160) });
+      badges.push({ icon: '🏆', title: 'Titan Planks', desc: 'Plus de 3 minutes', unlocked: plankHistory.some(h => h.seconds >= 180) });
+      badges.push({ icon: '💎', title: 'Légende', desc: 'Objectifs finaux atteints', unlocked: totalPlankSecs >= 36000 && maxPush >= 100 });
+
+      const container = document.getElementById('badgesContainer');
+      container.innerHTML = '';
+      badges.forEach(b => {
+        const div = document.createElement('div');
+        div.className = `badge-card ${b.unlocked ? 'unlocked' : ''}`;
+        div.innerHTML = `<span class="badge-icon">${b.icon}</span><div class="badge-title">${b.title}</div><div class="badge-desc">${b.desc}</div>`;
+        container.appendChild(div);
+      });
+    }
+
+    /* ================= MODULE 4 : CALENDRIER DATA ================= */
+    let calCurrentDate = new Date();
+    function changeMonth(dir) { 
+      calCurrentDate.setMonth(calCurrentDate.getMonth() + dir); 
+      playSound('pop');
+      renderCalendar(); 
+    }
+
+    function renderCalendar() {
+      const year = calCurrentDate.getFullYear(); const month = calCurrentDate.getMonth();
+      const monthNames = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
+      document.getElementById('calMonthTitle').innerText = `${monthNames[month]} ${year}`;
+
+      const gridDays = document.getElementById('calGridDays'); gridDays.innerHTML = '';
+      const firstDayIndex = (new Date(year, month, 1).getDay() + 6) % 7; 
+      const totalDays = new Date(year, month + 1, 0).getDate();
+
+      const activeDatesMap = {};
+      plankHistory.forEach(h => { if(!activeDatesMap[h.date]) activeDatesMap[h.date] = []; activeDatesMap[h.date].push(`Planks (${h.variant || 'Standard'}) : ${h.seconds}s`); });
+      pushupHistory.forEach(h => { if(!activeDatesMap[h.date]) activeDatesMap[h.date] = []; activeDatesMap[h.date].push(`Push-pull (${h.variant || 'Standard'}) : ${h.count} reps`); });
+
+      for(let i = 0; i < firstDayIndex; i++) { gridDays.appendChild(Object.assign(document.createElement('div'), { className: 'cal-day empty' })); }
+
+      for(let day = 1; day <= totalDays; day++) {
+        const dayDiv = document.createElement('div');
+        dayDiv.className = 'cal-day';
+        const dateString = `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+        dayDiv.innerText = day;
+
+        if(activeDatesMap[dateString]) {
+          dayDiv.classList.add('active-practice');
+          dayDiv.onclick = () => {
+            playSound('pop');
+            document.getElementById('dayDetailsText').innerHTML = `<strong>Rappel du ${dateString} :</strong><br>` + activeDatesMap[dateString].join('<br>');
+          };
+        } else {
+          dayDiv.onclick = () => {
+            playSound('pop');
+            document.getElementById('dayDetailsText').innerHTML = `<strong>Rappel du ${dateString} :</strong><br>Aucune activité.`;
+          };
+        }
+        gridDays.appendChild(dayDiv);
+      }
+    }
+
+    function exportToCSV() {
+      playSound('pop');
+      let csvContent = "data:text/csv;charset=utf-8,Date,Activite,Variante,Valeur\n";
+      plankHistory.forEach(h => { csvContent += `${h.date},Planks,${h.variant || 'Standard'},${h.seconds}s\n`; });
+      pushupHistory.forEach(h => { csvContent += `${h.date},Push-pull,${h.variant || 'Standard'},${h.count}\n`; });
+      const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent));
+      link.setAttribute("download", "core_push_export.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
+    }
+
+    function triggerBackup() {
+      playSound('pop');
+      navigator.clipboard.writeText(JSON.stringify({ plankHistory, pushupHistory, records })).then(() => alert("Données copiées !"));
+    }
+
+    function resetData(type) {
+      playSound('pop');
+      if(type === 'plank' && confirm("Effacer l'historique Planks ?")) { plankHistory = []; localStorage.removeItem('planksHistory'); updatePlankStats(); }
+      else if(type === 'pushup' && confirm("Effacer l'historique Push-pull ?")) { pushupHistory = []; localStorage.removeItem('pushupHistory'); updatePushupStats(); }
+      else if(type === 'all' && confirm("Tout effacer ?")) { localStorage.clear(); location.reload(); }
+      renderCalendar();
+    }
+
+    // Init
+    displayRecords(); updatePlankStats(); updatePushupStats(); renderPushProgram(); calculateStreak();
+  </script>
+</body>
 </html>

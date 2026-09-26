@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Core & Push Pro</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- Firebase SDKs -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCrZOBTMn8n1KgoZ9xvQtT7hFRT6Zoxfro",
+      authDomain: "corepushpro.firebaseapp.com",
+      projectId: "corepushpro",
+      storageBucket: "corepushpro.firebasestorage.app",
+      messagingSenderId: "334835559670",
+      appId: "1:334835559670:web:dfbb459c8652e6833f90d7"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const provider = new GoogleAuthProvider();
+
+    window.toggleCloudAuth = async function() {
+      if (auth.currentUser) {
+        await signOut(auth);
+        alert("Déconnecté du Cloud.");
+      } else {
+        try {
+          await signInWithPopup(auth, provider);
+        } catch (error) {
+          console.error("Erreur de connexion", error);
+          alert("Erreur de connexion Google : " + error.message);
+        }
+      }
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+      const authBtn = document.getElementById('cloudAuthBtn');
+      if (user) {
+        authBtn.innerText = "☁️ Connecté";
+        authBtn.style.color = "var(--success)";
+        await loadUserData(user.uid);
+      } else {
+        authBtn.innerText = "☁️ Connexion Cloud";
+        authBtn.style.color = "var(--text-sec)";
+      }
+    });
+
+    window.saveUserDataToCloud = async function() {
+      const user = auth.currentUser;
+      if (!user) return;
+      try {
+        await setDoc(doc(db, "users", user.uid), {
+          plankHistory: JSON.parse(localStorage.getItem('planksHistory') || '[]'),
+          pushupHistory: JSON.parse(localStorage.getItem('pushupHistory') || '[]'),
+          progS1: JSON.parse(localStorage.getItem('progS1_v2') || '[]'),
+          progS2: JSON.parse(localStorage.getItem('progS2_v2') || '[]'),
+          lastUpdated: new Date().toISOString()
+        });
+      } catch (e) {
+        console.error("Erreur sauvegarde cloud", e);
+      }
+    }
+
+    async function loadUserData(uid) {
+      try {
+        const docRef = doc(db, "users", uid);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if(data.plankHistory && data.plankHistory.length > 0) localStorage.setItem('planksHistory', JSON.stringify(data.plankHistory));
+          if(data.pushupHistory && data.pushupHistory.length > 0) localStorage.setItem('pushupHistory', JSON.stringify(data.pushupHistory));
+          if(data.progS1) localStorage.setItem('progS1_v2', JSON.stringify(data.progS1));
+          if(data.progS2) localStorage.setItem('progS2_v2', JSON.stringify(data.progS2));
+          
+          // CORRECTION DE LA BOUCLE INFINIE : On rafraîchit l'interface sans recharger la page
+          window.refreshDataFromLocal();
+
+        } else {
+            // Si pas de données dans le cloud, on force l'envoi des données locales
+            await window.saveUserDataToCloud();
+        }
+      } catch (e) {
+        console.error("Erreur chargement cloud", e);
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      --bg: #000000; --surface: #121214; --surface-bright: #1c1c21;
+      --primary: #d0bcff; --primary-container: #4f378b;
+      --on-primary: #381e72; --on-primary-container: #eaddff;
+      --text: #e6e1e5; --text-sec: #949099;
+      --prep: #fde293; --prep-bg: #3d3000; 
+      --work: #ffb4ab; --work-bg: #410002; 
+      --rest: #8edecc; --rest-bg: #003731; --success: #a8f5d0;
+    }
+    body { margin: 0; padding: 16px; max-width: 500px; margin-left: auto; margin-right: auto; font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); padding-bottom: 80px; }
+    header { text-align: center; margin-bottom: 12px; }
+    h1 { font-weight: 700; margin: 0 0 2px 0; font-size: 1.1rem; color: var(--primary); transition: 0.3s; }
+    .header-info { display: flex; justify-content: center; gap: 10px; font-size: 0.75rem; color: var(--text-sec); margin-top: 4px; align-items: center; }
+    .streak-badge { color: var(--prep); font-weight: bold; }
+    .tabs-nav { display: flex; background: var(--surface); border-radius: 100px; padding: 4px; margin-bottom: 16px; }
+    .tab-btn { flex: 1; background: transparent; border: none; color: var(--text-sec); padding: 8px 4px; font-weight: 600; font-size: 0.75rem; border-radius: 100px; cursor: pointer; transition: all 0.3s; }
+    .tab-btn.active { background: var(--primary-container); color: var(--on-primary-container); box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+    .tab-content { display: none; } .tab-content.active { display: block; }
+    .card { background: var(--surface); border-radius: 24px; padding: 18px; margin-bottom: 14px; border: 1px solid rgba(255,255,255,0.06); }
+    .card.mode-prep { background-color: var(--prep-bg); border-color: rgba(253, 226, 147, 0.2); } .card.mode-prep .timer { color: var(--prep); }
+    .card.mode-work { background-color: var(--work-bg); border-color: rgba(255, 180, 171, 0.2); } .card.mode-work .timer { color: var(--work); }
+    .card.mode-rest { background-color: var(--rest-bg); border-color: rgba(142, 222, 204, 0.2); } .card.mode-rest .timer { color: var(--rest); }
+    h3 { margin-top: 0; color: var(--primary); font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; justify-content: space-between; }
+    .overlay-mode { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
+    .overlay-close { position: absolute; top: 20px; right: 20px; background: var(--surface-bright); color: var(--text); border: none; padding: 10px 20px; border-radius: 20px; font-weight: bold; cursor: pointer; z-index: 10001; }
+    .timer-container { text-align: center; margin: 10px 0 15px 0; position: relative; }
+    .medal-ring { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -55%); width: 140px; height: 140px; border-radius: 50%; border: 4px solid rgba(255, 255, 255, 0.03); border-top-color: #fde293; opacity: 0; transition: opacity 0.3s; }
+    .medal-ring.active { opacity: 1; animation: pulseRing 1.5s infinite; }
+    @keyframes pulseRing { 0% { transform: translate(-50%, -55%) scale(0.95); } 50% { transform: translate(-50%, -55%) scale(1.05); } 100% { transform: translate(-50%, -55%) scale(0.95); } }
+    .timer { font-size: 3.5rem; font-variant-numeric: tabular-nums; font-weight: 800; color: var(--primary); position: relative; z-index: 2; }
+    .timer-label { color: var(--text-sec); font-size: 0.8rem; font-weight: 500; height: 16px; }
+    .row-btn { display: flex; gap: 8px; margin-bottom: 10px;}
+    button { border: none; padding: 12px 18px; border-radius: 100px; font-size: 0.9rem; font-weight: 700; cursor: pointer; flex: 1; transition: 0.3s;}
+    button:active { transform: scale(0.96); }
+    .btn-primary { background: var(--primary); color: var(--on-primary); }
+    .btn-sec { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
+    .push-counter-display { font-size: 3rem; font-weight: 800; text-align: center; color: var(--primary); margin: 5px 0; }
+    .push-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; }
+    .btn-counter { background: var(--surface-bright); color: var(--text); padding: 12px 0; border-radius: 14px; }
+    .btn-counter.plus { background: var(--primary-container); color: var(--on-primary-container); }
+    .prog-switcher { display: flex; gap: 8px; margin-bottom: 12px; }
+    .prog-tab { flex: 1; background: var(--surface-bright); border: none; padding: 8px; border-radius: 10px; color: var(--text-sec); font-weight: bold; font-size: 0.8rem; cursor: pointer; }
+    .prog-tab.active { background: var(--primary); color: var(--on-primary); }
+    .push-prog-day { background: var(--surface-bright); border-radius: 16px; padding: 12px; margin-bottom: 8px; }
+    .push-prog-header { display: flex; justify-content: space-between; font-weight: bold; font-size: 0.85rem; margin-bottom: 6px; }
+    .push-sets-list { display: flex; gap: 6px; flex-wrap: wrap; }
+    .set-chip { background: var(--bg); border: 1px solid rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 8px; font-size: 0.75rem; cursor: pointer; }
+    .set-chip.checked { background: var(--success); color: #002114; text-decoration: line-through; border:none; }
+    .fatigue-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+    .fatigue-box { background: var(--surface); padding: 24px; border-radius: 24px; text-align: center; border: 1px solid rgba(255,255,255,0.1); width: 90%; max-width: 350px; }
+    .f-btn { width: 100%; margin-bottom: 10px; padding: 14px; border-radius: 16px; font-size: 1rem; }
+    .f-vert { background: #a8f5d0; color: #002114; } .f-orange { background: #fde293; color: #3d3000; } .f-rouge { background: #ffb4ab; color: #410002; }
+    .snapshot-card { background: linear-gradient(135deg, var(--surface), var(--surface-bright)); padding: 30px; border-radius: 24px; border: 2px solid var(--primary); text-align: center; width: 100%; max-width: 350px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+    .snap-title { color: var(--primary); font-size: 1.8rem; font-weight: 900; margin: 0 0 5px 0; }
+    .snap-subtitle { color: var(--text-sec); font-size: 0.85rem; margin-bottom: 20px; }
+    .snap-stat { background: var(--bg); padding: 15px; border-radius: 16px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.05); }
+    .snap-stat span { display: block; font-size: 0.75rem; color: var(--text-sec); }
+    .snap-stat strong { font-size: 1.5rem; color: var(--text); }
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; }
+    .cal-dow { font-size: 0.7rem; color: var(--text-sec); font-weight: bold; padding-bottom: 4px; }
+    .cal-day { position: relative; background: var(--surface-bright); border-radius: 8px; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; cursor: pointer; border: 1px solid rgba(255,255,255,0.03); }
+    .heatmap-1 { background: var(--primary-container); opacity: 0.4; color: var(--on-primary-container); }
+    .heatmap-2 { background: var(--primary-container); opacity: 0.7; color: var(--on-primary-container); font-weight:bold; }
+    .heatmap-3 { background: var(--primary); color: var(--on-primary); font-weight:bold; box-shadow: 0 0 10px var(--primary-container); }
+    .badges-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; max-height: 450px; overflow-y: auto; padding-right: 4px;}
+    .badge-card { background: var(--surface-bright); border-radius: 16px; padding: 12px; text-align: center; opacity: 0.35; position: relative; }
+    .badge-card.unlocked { opacity: 1; background: var(--primary-container); border: 1px solid var(--primary); }
+    .badge-icon { font-size: 1.5rem; margin-bottom: 4px; display: block; }
+    .badge-title { font-weight: bold; font-size: 0.8rem; color: var(--on-primary-container); margin-bottom: 2px; }
+    .badge-date { font-size: 0.6rem; color: var(--text); margin-top: 4px; font-weight:bold;}
+    .chart-container { position: relative; height: 160px; width: 100%; margin-top: 8px; }
+    .prestige-selector { width: 100%; background: var(--surface-bright); color: var(--primary); border: 1px solid var(--primary); padding: 10px; border-radius: 12px; font-weight: bold; font-size: 0.9rem; margin-bottom: 15px; display: none; }
+    .inline-rest { display: none; background: var(--rest-bg); border: 1px solid var(--rest); padding: 14px; border-radius: 16px; margin-bottom: 12px; text-align: center; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1 id="mainTitle">Core & Push Pro</h1>
+    <div class="header-info">
+      <span class="streak-badge" id="streakText">🔥 Série : 0 j</span>
+      <span id="voiceToggleSpan" style="cursor:pointer;" onclick="toggleVoice()">🔊 Vocal : ON</span>
+      <span id="cloudAuthBtn" style="cursor:pointer; font-weight:bold; color:var(--text-sec);" onclick="toggleCloudAuth()">☁️ Connexion Cloud</span>
+    </div>
+  </header>
+
+  <div class="tabs-nav">
+    <button class="tab-btn active" onclick="switchTab('plank')">Planks</button>
+    <button class="tab-btn" onclick="switchTab('pushup')">Push</button>
+    <button class="tab-btn" onclick="switchTab('badges')">Trophées</button>
+    <button class="tab-btn" onclick="switchTab('dashboard')">Data</button>
+  </div>
+
+  <div id="plankTab" class="tab-content active">
+    <div class="card" id="timerCard">
+      <select id="plankPrestigeSelector" class="prestige-selector"><option>Gainage Classique</option><option>Gainage Latéral Droit</option><option>Gainage Latéral Gauche</option></select>
+      <div style="display:flex; justify-content:flex-end; margin-bottom:-10px;"><button style="background:transparent; color:var(--text-sec); font-size:0.7rem; padding:4px;" onclick="togglePedestalMode()">📱 Piédestal</button></div>
+      <div class="timer-container"><div class="medal-ring" id="medalRing"></div><div class="timer" id="display">00:00</div><div class="timer-label" id="timerLabel">Chrono Libre</div></div>
+      <div class="row-btn"><button class="btn-primary" id="startBtn" onclick="toggleStandardTimer()">Start Libre</button><button class="btn-sec" onclick="saveStandardSession()">Valider</button></div>
+      <div style="display:flex; gap:10px; margin: 15px 0;">
+        <div style="flex:1; text-align:center;"><span style="font-size:0.7rem; color:var(--text-sec);">Effort</span><br><input type="number" id="workInput" value="20" style="width:100%; background:var(--bg); color:#fff; border:1px solid #333; text-align:center; padding:5px; border-radius:8px;"></div>
+        <div style="flex:1; text-align:center;"><span style="font-size:0.7rem; color:var(--text-sec);">Repos</span><br><input type="number" id="restInput" value="10" style="width:100%; background:var(--bg); color:#fff; border:1px solid #333; text-align:center; padding:5px; border-radius:8px;"></div>
+      </div>
+      <button style="width:100%; background:var(--work); color:#410002;" id="tabataBtn" onclick="startTabata()">Lancer Tabata (x8)</button>
+    </div>
+    <div class="card"><h3>Évolution Planks <span style="font-size:0.75rem; color:var(--text-sec);" id="plankRecord">Record: 0s</span></h3><div class="chart-container"><canvas id="plankChart"></canvas></div></div>
+  </div>
+
+  <div id="pushupTab" class="tab-content">
+    <div class="card">
+      <select id="pushPrestigeSelector" class="prestige-selector"><option>Pompes Classiques</option><option>Pompes Diamant</option><option>Pompes Déclinées</option></select>
+      <div class="timer-container" style="margin-bottom: 5px;"><div class="push-counter-display" id="currentPushCount">0</div><div class="timer-label">Série en cours</div></div>
+      <div class="push-actions"><button class="btn-counter" onclick="adjustPush(-5)">-5</button><button class="btn-counter" onclick="adjustPush(-1)">-1</button><button class="btn-counter plus" onclick="adjustPush(1)">+1</button></div>
+      <div class="row-btn"><button class="btn-counter" onclick="adjustPush(5)" style="flex:1">+5</button><button class="btn-counter plus" onclick="adjustPush(10)" style="flex:1">+10</button></div>
+      <div style="margin-top: 12px;"><button class="btn-primary" style="width: 100%;" onclick="savePushSession()">Enregistrer Record / Série</button></div>
+    </div>
+    
+    <div class="card">
+      <h3>Programme Push-pull</h3>
+      <div id="restTimerContainer" class="inline-rest">
+        <div style="color: var(--rest); font-weight: 800; font-size: 1.5rem; margin-bottom: 8px;">Repos : <span id="restTimerDisplay">30</span>s</div>
+        <button class="btn-sec" style="width: 100%; border-color: var(--rest); color: var(--rest);" onclick="skipRestTimer()">Passer (Skip)</button>
+      </div>
+      <div class="prog-switcher"><button class="prog-tab active" id="btnSeries1" onclick="switchSeries(1)">Série 1</button><button class="prog-tab" id="btnSeries2" onclick="switchSeries(2)">Série 2 (Obj. 50)</button></div>
+      <div id="pushProgramContainer"></div>
+    </div>
+    <div class="card"><h3>Volume Push-pull <span style="font-size:0.75rem; color:var(--text-sec);" id="pushRecord">Record: 0</span></h3><div class="chart-container"><canvas id="pushupChart"></canvas></div></div>
+  </div>
+
+  <div id="badgesTab" class="tab-content">
+    <div class="card">
+      <h3>🏆 Hall des 40 Trophées</h3><p style="font-size:0.7rem; color:var(--text-sec); margin-top:0; margin-bottom:12px;">Accomplissements.</p>
+      <div class="badges-grid" id="badgesContainer"></div>
+    </div>
+  </div>
+
+  <div id="dashboardTab" class="tab-content">
+    <button style="width:100%; background:var(--primary); color:var(--on-primary); font-weight:bold; font-size:1.1rem; padding:15px; border-radius:20px; border:none; margin-bottom:15px; cursor:pointer;" onclick="openSnapshot()">📸 Générer mon Bilan Social</button>
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; margin-bottom: 12px; color: var(--primary); font-weight:bold;"><button style="background:none; color:inherit; border:none; padding:4px; font-size:1.2rem; cursor:pointer;" onclick="changeMonth(-1)">◀</button><span id="calMonthTitle">Mois Année</span><button style="background:none; color:inherit; border:none; padding:4px; font-size:1.2rem; cursor:pointer;" onclick="changeMonth(1)">▶</button></div>
+      <div class="cal-grid" id="calGridHeader"><div class="cal-dow">lu</div><div class="cal-dow">ma</div><div class="cal-dow">me</div><div class="cal-dow">je</div><div class="cal-dow">ve</div><div class="cal-dow">sa</div><div class="cal-dow">di</div></div>
+      <div class="cal-grid" id="calGridDays" style="margin-top:6px;"></div>
+      <div style="margin-top:12px; background:var(--surface-bright); padding:12px; border-radius:12px; font-size:0.8rem; color:var(--text-sec);" id="dayDetailsText">Cliquez sur une date colorée pour voir le détail.</div>
+    </div>
+    <div class="card">
+      <div style="display: flex; gap: 8px; margin-bottom: 12px;"><button class="btn-primary" onclick="exportToCSV()">Exporter CSV</button><button class="btn-sec" onclick="triggerBackup()">Copier</button></div>
+      <button style="background:none; color:#ffb4ab; border:1px dashed rgba(255,180,171,0.3); width:100%; padding:10px; border-radius:12px; cursor:pointer;" onclick="resetData('all')">Remise à zéro globale</button>
+    </div>
+  </div>
+
+  <!-- MODALS -->
+  <div id="pedestalModal" class="overlay-mode" style="display:none; justify-content:center; gap: 40px;">
+    <button class="overlay-close" onclick="togglePedestalMode()">Fermer ✕</button>
+    <div style="font-size: 1.5rem; color: var(--prep); font-weight:bold; letter-spacing: 2px;">MODE PIÉDESTAL</div>
+    <div class="timer" id="pedestalDisplay" style="font-size: 6rem !important;">00:00</div>
+    <button class="btn-primary" id="pedestalStartBtn" onclick="toggleStandardTimer()" style="font-size: 1.2rem; padding: 20px 40px; border-radius: 20px;">Démarrer le Chrono</button>
+  </div>
+  
+  <div id="fatigueModal" class="fatigue-modal" style="display:none;"><div class="fatigue-box"><h2 style="margin-top:0; color:var(--text);">Comment c'était ?</h2><button class="f-btn f-vert" onclick="rateFatigue('vert')">Facile</button><button class="f-btn f-orange" onclick="rateFatigue('orange')">Bien</button><button class="f-btn f-rouge" onclick="rateFatigue('rouge')">Difficile</button></div></div>
+  
+  <div id="snapshotModal" class="overlay-mode" style="display:none; justify-content:center; align-items:center;"><button class="overlay-close" style="top:20px; right:20px;" onclick="closeSnapshot()">Fermer ✕</button><div style="color:var(--text-sec); margin-bottom:15px; font-size:0.9rem;">Faites une capture d'écran pour partager ! 👇</div>
+    <div class="snapshot-card" id="snapCard"><div class="snap-title">Core & Push Pro</div><div class="snap-subtitle">Bilan d'entraînement</div><div class="snap-stat"><span>🔥 Série en cours</span><strong id="snapStreak">0 j</strong></div><div style="display:flex; gap:10px;"><div class="snap-stat" style="flex:1;"><span>🧱 Max Gainage</span><strong id="snapPlank">0s</strong></div><div class="snap-stat" style="flex:1;"><span>💪 Max Pompes</span><strong id="snapPush">0</strong></div></div><div class="snap-stat" style="margin-bottom:0;"><span>🏆 Trophées Débloqués</span><strong id="snapBadges">0/40</strong></div></div>
+  </div>
+
+  <script>
+    const manifest = { "name": "Core & Push Pro", "short_name": "Core&Push", "start_url": ".", "display": "standalone", "background_color": "#000", "theme_color": "#000", "icons": [{"src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzAwMCIvPjx0ZXh0IHk9IjYwIiB4PSI1MCIgZm9udC1zaXplPSI1MCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+4pqhPC90ZXh0Pjwvc3ZnPg==", "sizes": "192x192", "type": "image/svg+xml"}] };
+    document.querySelector('head').insertAdjacentHTML('beforeend', `<link rel="manifest" href="${URL.createObjectURL(new Blob([JSON.stringify(manifest)], {type: 'application/manifest+json'}))}">`);
+
+    // INJECTION AUTOMATIQUE DES DONNÉES DU CSV
+    if (!localStorage.getItem('init_v15')) {
+      const pHistory = [
+        { date: '2026-09-15', seconds: 141 },
+        { date: '2026-09-22', seconds: 100 },
+        { date: '2026-09-23', seconds: 160 },
+        { date: '2026-09-24', seconds: 160 },
+        { date: '2026-09-24', seconds: 160 },
+        { date: '2026-09-25', seconds: 160 }
+      ];
+      const puHistory = [
+        { date: '2026-09-22', count: 30, type: 'record' },
+        { date: '2026-09-23', count: 31, type: 'record' },
+        { date: '2026-09-24', count: 30, type: 'record' },
+        { date: '2026-09-24', count: 30, type: 'record' },
+        { date: '2026-09-24', count: 5, type: 'volume', dIdx: 0, sIdx: 0, series: 1 },
+        { date: '2026-09-24', count: 5, type: 'volume', dIdx: 0, sIdx: 1, series: 1 },
+        { date: '2026-09-24', count: 4, type: 'volume', dIdx: 0, sIdx: 2, series: 1 },
+        { date: '2026-09-24', count: 3, type: 'volume', dIdx: 0, sIdx: 3, series: 1 },
+        { date: '2026-09-24', count: 2, type: 'volume', dIdx: 0, sIdx: 4, series: 1 },
+        { date: '2026-09-24', count: 7, type: 'volume', dIdx: 1, sIdx: 0, series: 1 },
+        { date: '2026-09-24', count: 6, type: 'volume', dIdx: 1, sIdx: 1, series: 1 },
+        { date: '2026-09-24', count: 5, type: 'volume', dIdx: 1, sIdx: 2, series: 1 },
+        { date: '2026-09-24', count: 4, type: 'volume', dIdx: 1, sIdx: 3, series: 1 },
+        { date: '2026-09-24', count: 3, type: 'volume', dIdx: 1, sIdx: 4, series: 1 },
+        { date: '2026-09-25', count: 9, type: 'volume', dIdx: 2, sIdx: 0, series: 1 },
+        { date: '2026-09-25', count: 7, type: 'volume', dIdx: 2, sIdx: 1, series: 1 },
+        { date: '2026-09-25', count: 6, type: 'volume', dIdx: 2, sIdx: 2, series: 1 },
+        { date: '2026-09-25', count: 5, type: 'volume', dIdx: 2, sIdx: 3, series: 1 },
+        { date: '2026-09-25', count: 4, type: 'volume', dIdx: 2, sIdx: 4, series: 1 }
+      ];
+      
+      let s1 = Array.from({length:15},(_,i)=>({day:i+1, sets:[5+i*2,5+i,4+i,3+i,2+i], done:false, setsDone:[false,false,false,false,false], fatigueRated:false}));
+      s1[0].done = true; s1[0].setsDone = [true,true,true,true,true]; s1[0].fatigueRated = true;
+      s1[1].done = true; s1[1].setsDone = [true,true,true,true,true]; s1[1].fatigueRated = true;
+      s1[2].done = true; s1[2].setsDone = [true,true,true,true,true]; s1[2].fatigueRated = true;
+      
+      localStorage.setItem('planksHistory', JSON.stringify(pHistory));
+      localStorage.setItem('pushupHistory', JSON.stringify(puHistory));
+      localStorage.setItem('progS1_v2', JSON.stringify(s1));
+      localStorage.setItem('init_v15', 'true');
+    }
+
+    let voiceEnabled = true; function toggleVoice() { voiceEnabled = !voiceEnabled; document.getElementById('voiceToggleSpan').innerText = voiceEnabled ? "🔊 Vocal : ON" : "🔇 Vocal : OFF"; }
+    function speak(text) { if (voiceEnabled && 'speechSynthesis' in window) { window.speechSynthesis.cancel(); let u = new SpeechSynthesisUtterance(text); u.lang = 'fr-FR'; window.speechSynthesis.speak(u); } }
+    
+    let wakeLock = null; 
+    async function requestWakeLock() { if ('wakeLock' in navigator) { try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e){} } }
+    function releaseWakeLock() { if (wakeLock) { wakeLock.release().catch(()=>{}); wakeLock = null; } }
+    
+    let plankHistory = JSON.parse(localStorage.getItem('planksHistory')) || [];
+    let pushupHistory = JSON.parse(localStorage.getItem('pushupHistory')) || [];
+    let calculatedBadges = []; let badgesByDate = {}; let currentStreak = 0;
+
+    const defS1=Array.from({length:15},(_,i)=>({day:i+1, sets:[5+i*2,5+i,4+i,3+i,2+i], done:false, setsDone:[false,false,false,false,false]}));
+    const defS2=[ {day:1,sets:[15,12,10,8,6],done:false}, {day:2,sets:[18,14,10,8,8],done:false}, {day:3,sets:[20,15,12,10,8],done:false}, {type:'defi',target:35,label:"Défi 35",done:false}, {day:5,sets:[25,20,15,12,12],done:false}, {type:'defi',target:40,label:"Défi 40",done:false}, {day:7,sets:[30,25,20,15,15],done:false}, {type:'defi',target:50,label:"Défi Ultime : 50 !",done:false} ];
+    let stateS1=JSON.parse(localStorage.getItem('progS1_v2'))||defS1; let stateS2=JSON.parse(localStorage.getItem('progS2_v2'))||defS2;
+
+    // FONCTION DE RAFRAÎCHISSEMENT SANS RECHARGEMENT DE PAGE
+    window.refreshDataFromLocal = function() {
+      plankHistory = JSON.parse(localStorage.getItem('planksHistory')) || [];
+      pushupHistory = JSON.parse(localStorage.getItem('pushupHistory')) || [];
+      stateS1 = JSON.parse(localStorage.getItem('progS1_v2')) || defS1;
+      stateS2 = JSON.parse(localStorage.getItem('progS2_v2')) || defS2;
+      
+      computeBadges(); 
+      applyPrestigeTheme(); 
+      updatePlankStats(); 
+      updatePushupStats(); 
+      renderPushProgram(); 
+      renderCalendar(); 
+      updateHeaderTitle();
+    };
+
+    function applyPrestigeTheme() {
+      let pushRecords = pushupHistory.filter(h => h.type !== 'volume');
+      let maxPush = pushRecords.length ? Math.max(...pushRecords.map(s=>s.count)) : 0;
+      let s1Done = stateS1.every(d => d.done);
+      let r = document.documentElement;
+      let plankSel = document.getElementById('plankPrestigeSelector'); let pushSel = document.getElementById('pushPrestigeSelector');
+      if (maxPush >= 50) { r.style.setProperty('--primary', '#ffd700'); r.style.setProperty('--primary-container', '#b8860b'); plankSel.style.display = 'block'; pushSel.style.display = 'block'; } 
+      else if (maxPush >= 40) { r.style.setProperty('--primary', '#00e5ff'); r.style.setProperty('--primary-container', '#0091ea'); } 
+      else if (s1Done) { r.style.setProperty('--primary', '#ff8a65'); r.style.setProperty('--primary-container', '#d84315'); } 
+    }
+
+    function computeBadges() {
+      calculatedBadges = []; badgesByDate = {};
+      let sortedPlanks = [...plankHistory].sort((a,b)=>a.date.localeCompare(b.date));
+      let sortedPush = [...pushupHistory].filter(h => h.type !== 'volume').sort((a,b)=>a.date.localeCompare(b.date));
+      let allDates = Array.from(new Set([...sortedPlanks.map(h=>h.date), ...sortedPush.map(h=>h.date)])).sort();
+      let plankTargets = [5, 10, 15, 30, 45, 60, 120, 180, 240, 300]; let totalP = 0, pDates = {};
+      sortedPlanks.forEach(h => { totalP += h.seconds/60; plankTargets.forEach(t => { if(totalP>=t && !pDates[t]) pDates[t] = h.date; }); });
+      plankTargets.forEach(t => calculatedBadges.push({ icon:'🧱', title:`Pilier ${t}m`, desc:`Cumuler ${t} min`, date: pDates[t] }));
+      let pushTargets = [10, 15, 20, 25, 30, 35, 40, 45, 50, 60]; let puDates = {};
+      sortedPush.forEach(h => { pushTargets.forEach(t => { if(h.count>=t && !puDates[t]) puDates[t] = h.date; }); });
+      pushTargets.forEach(t => calculatedBadges.push({ icon:'💪', title:`Force ${t}`, desc:`${t} reps d'affilée`, date: puDates[t] }));
+      let streakTargets = [3, 5, 7, 10, 14, 21, 30, 50, 75, 100]; let sDates = {}, sCounter = 0;
+      for(let i=0; i<allDates.length; i++) { if(i===0 || Math.abs(new Date(allDates[i])-new Date(allDates[i-1])) <= 86400000*1.5) sCounter++; else sCounter=1; streakTargets.forEach(t => { if(sCounter>=t && !sDates[t]) sDates[t] = allDates[i]; }); }
+      streakTargets.forEach(t => calculatedBadges.push({ icon:'🔥', title:`Flamme ${t}j`, desc:`Série de ${t} jours`, date: sDates[t] }));
+      
+      let cd = new Date(); currentStreak = 0; let dates = new Set(allDates);
+      while(true){ let ks=cd.toISOString().split('T')[0]; if(dates.has(ks)){currentStreak++; cd.setDate(cd.getDate()-1);} else{ if(currentStreak===0){cd.setDate(cd.getDate()-1); if(dates.has(cd.toISOString().split('T')[0])) continue;} break; } }
+      document.getElementById('streakText').innerText = `🔥 Série : ${currentStreak} j`;
+    }
+
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-content, .tab-btn').forEach(el => el.classList.remove('active'));
+      const idx = ['plank', 'pushup', 'badges', 'dashboard'].indexOf(tabName);
+      document.querySelectorAll('.tab-content')[idx].classList.add('active'); document.querySelectorAll('.tab-btn')[idx].classList.add('active');
+      if(tabName==='plank') updatePlankStats(); if(tabName==='pushup') updatePushupStats();
+      if(tabName==='badges' || tabName==='dashboard'){ computeBadges(); if(tabName==='badges') renderBadges(); else renderCalendar(); }
+    }
+
+    let standardSecs = 0, isStandardRunning = false, isTabataRunning = false, isPrepRunning = false, prepTimeLeft = 15, prepInterval = null;
+    let tabataPhase = 'prep', tabataCycle = 1, tabataTimeLeft = 5, interval = null, plankChart = null;
+    
+    function saveToPlankHistory(secs) { 
+      plankHistory.push({ date: new Date().toISOString().split('T')[0], seconds: secs }); 
+      localStorage.setItem('planksHistory', JSON.stringify(plankHistory)); 
+      updatePlankStats(); computeBadges(); 
+      if(window.saveUserDataToCloud) window.saveUserDataToCloud();
+    }
+    
+    function updateStandardDisplay() { 
+      let tStr = `${Math.floor(standardSecs/60).toString().padStart(2,'0')}:${(standardSecs%60).toString().padStart(2,'0')}`; 
+      document.getElementById('display').innerText = tStr; 
+      document.getElementById('pedestalDisplay').innerText = tStr; 
+    }
+
+    function toggleStandardTimer() { 
+      if(isTabataRunning) return; 
+      if(isPrepRunning) {
+        clearInterval(prepInterval); isPrepRunning = false; releaseWakeLock();
+        document.getElementById('startBtn').innerText='Start Libre';
+        document.getElementById('pedestalStartBtn').innerText='Démarrer le Chrono';
+        document.getElementById('timerLabel').innerText="Chrono Libre";
+        document.getElementById('timerCard').className='card';
+        return;
+      }
+      if(isStandardRunning) { 
+        clearInterval(interval); isStandardRunning=false; releaseWakeLock(); 
+        document.getElementById('startBtn').innerText='Start Libre'; 
+        document.getElementById('pedestalStartBtn').innerText='Reprendre';
+      } else { 
+        requestWakeLock(); isPrepRunning = true; prepTimeLeft = 15;
+        document.getElementById('timerCard').className='card mode-prep';
+        document.getElementById('timerLabel').innerText="PRÉPARATION (15s)";
+        document.getElementById('startBtn').innerText='Annuler';
+        document.getElementById('pedestalStartBtn').innerText='Annuler';
+        speak("Préparez-vous");
+
+        prepInterval = setInterval(() => {
+          prepTimeLeft--;
+          let ts = `00:${prepTimeLeft.toString().padStart(2,'0')}`;
+          document.getElementById('display').innerText = ts;
+          document.getElementById('pedestalDisplay').innerText = ts;
+          if(prepTimeLeft <= 0) {
+            clearInterval(prepInterval); isPrepRunning = false;
+            document.getElementById('timerCard').className='card';
+            document.getElementById('timerLabel').innerText="Chrono Libre";
+            document.getElementById('startBtn').innerText='Pause';
+            document.getElementById('pedestalStartBtn').innerText='Pause';
+            standardSecs = 0;
+            speak("C'est parti !");
+            interval = setInterval(()=>{standardSecs++; updateStandardDisplay();}, 1000);
+            isStandardRunning = true;
+          }
+        }, 1000);
+      } 
+    }
+    
+    function saveStandardSession() { 
+      if(standardSecs===0 || isTabataRunning || isPrepRunning) return; 
+      clearInterval(interval); isStandardRunning=false; releaseWakeLock(); 
+      if(document.getElementById('pedestalModal').style.display==='flex') togglePedestalMode(); 
+      saveToPlankHistory(standardSecs); 
+      standardSecs=0; updateStandardDisplay(); document.getElementById('startBtn').innerText='Start Libre'; document.getElementById('pedestalStartBtn').innerText='Démarrer le Chrono'; 
+      updateHeaderTitle();
+    }
+
+    function startTabata() {
+      if (isStandardRunning || isPrepRunning) return; 
+      if (isTabataRunning) { clearInterval(interval); isTabataRunning=false; releaseWakeLock(); document.getElementById('tabataBtn').innerText='Lancer Tabata (x8)'; document.getElementById('display').innerText="00:00"; return; }
+      requestWakeLock(); isTabataRunning=true; tabataPhase='prep'; tabataCycle=1; tabataTimeLeft=15; 
+      document.getElementById('tabataBtn').innerText='Stopper'; speak("Préparez-vous");
+      
+      const upd = () => { 
+        let ts=`00:${tabataTimeLeft.toString().padStart(2,'0')}`; 
+        document.getElementById('display').innerText=ts; document.getElementById('pedestalDisplay').innerText=ts; 
+        let c=document.getElementById('timerCard'); 
+        if(tabataPhase==='prep'){c.className='card mode-prep'; document.getElementById('timerLabel').innerText='PRÉPARATION';}
+        else if(tabataPhase==='work'){c.className='card mode-work'; document.getElementById('timerLabel').innerText=`EFFORT - Cycle ${tabataCycle}/8`;}
+        else{c.className='card mode-rest'; document.getElementById('timerLabel').innerText=`REPOS - Cycle ${tabataCycle}/8`;} 
+      }; upd();
+      
+      const workDur = parseInt(document.getElementById('workInput').value)||20, restDur = parseInt(document.getElementById('restInput').value)||10;
+      interval = setInterval(() => { 
+        tabataTimeLeft--; 
+        if (tabataTimeLeft<0) { 
+          if(tabataPhase==='prep') {tabataPhase='work'; tabataTimeLeft=workDur; speak("Effort");} 
+          else if(tabataPhase==='work') {tabataPhase='rest'; tabataTimeLeft=restDur; speak("Repos");} 
+          else { 
+            tabataCycle++; 
+            if(tabataCycle>8){ 
+              clearInterval(interval); isTabataRunning=false; releaseWakeLock(); 
+              saveToPlankHistory(8*workDur); 
+              document.getElementById('tabataBtn').innerText='Lancer Tabata (x8)'; 
+              document.getElementById('timerCard').className='card'; speak("Terminé !"); 
+              return;
+            } 
+            tabataPhase='work'; tabataTimeLeft=workDur; speak("Effort"); 
+          } 
+        } upd(); 
+      }, 1000);
+    }
+
+    function updatePlankStats() { 
+      let daily={}; plankHistory.forEach(h=>daily[h.date]=(daily[h.date]||0)+h.seconds); 
+      updateHeaderTitle();
+      let keys=Object.keys(daily).sort().slice(-7); let ctx=document.getElementById('plankChart').getContext('2d'); if(plankChart) plankChart.destroy(); 
+      plankChart = new Chart(ctx,{type:'bar', data:{labels:keys.map(k=>k), datasets:[{data:keys.map(k=>daily[k]), backgroundColor:'rgba(208, 188, 255, 0.4)', borderRadius:6}]}, options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'#cac4d0'}}, x:{display:false}}}}); 
+    }
+    
+    function updateHeaderTitle() {
+      let maxP = plankHistory.length ? Math.max(...plankHistory.map(h=>h.seconds)) : 0;
+      let pushRecords = pushupHistory.filter(h => h.type !== 'volume');
+      let maxPu = pushRecords.length ? Math.max(...pushRecords.map(s=>s.count)) : 0;
+      document.getElementById('mainTitle').innerText = `Core & Push Pro — 🧱 ${maxP}s | 💪 ${maxPu} reps`;
+    }
+
+    let isPedestalActive = false; 
+    function togglePedestalMode() { 
+      isPedestalActive=!isPedestalActive; 
+      document.getElementById('pedestalModal').style.display=isPedestalActive?'flex':'none'; 
+    }
+
+    // PUSH
+    let currentPushCount = 0, currentSeries = 1, pushChart = null;
+    let pendingFatigueDayIdx = null; let restInterval = null, restTimeLeft = 0, isRestTimerRunning = false;
+    
+    function startRestTimer(sec) {
+      clearInterval(restInterval); restTimeLeft = sec; isRestTimerRunning = true;
+      document.getElementById('restTimerContainer').style.display = 'block'; document.getElementById('restTimerDisplay').innerText = restTimeLeft;
+      requestWakeLock(); speak("Repos de 30 secondes");
+      restInterval = setInterval(() => {
+        restTimeLeft--; document.getElementById('restTimerDisplay').innerText = restTimeLeft;
+        if(restTimeLeft <= 0) { speak("C'est reparti !"); skipRestTimer(); }
+      }, 1000);
+    }
+    function skipRestTimer() { clearInterval(restInterval); isRestTimerRunning = false; document.getElementById('restTimerContainer').style.display = 'none'; if(!isStandardRunning && !isTabataRunning && !isPrepRunning) releaseWakeLock(); }
+    function switchSeries(n) { currentSeries=n; document.getElementById('btnSeries1').className=`prog-tab ${n===1?'active':''}`; document.getElementById('btnSeries2').className=`prog-tab ${n===2?'active':''}`; renderPushProgram(); }
+    
+    function renderPushProgram() {
+      let c = document.getElementById('pushProgramContainer'); c.innerHTML = ''; let s = currentSeries === 1 ? stateS1 : stateS2;
+      let cIdx = s.findIndex(d => !d.done); if(cIdx === -1) cIdx = s.length - 1;
+      for(let i=0; i<Math.min(5, s.length); i++) {
+        let item = s[i];
+        let l=item.type==='defi'?item.label:`Jour ${i+1} : ${item.sets.join('-')}`; 
+        let chips=item.type==='defi'?`<span class="set-chip ${item.done?'checked':''}" onclick="toggleDefi(${i})">Valider</span>`:item.sets.map((v,j)=>`<span class="set-chip ${item.setsDone&&item.setsDone[j]?'checked':''}" onclick="toggleSet(${i},${j})">S${j+1}: ${v}</span>`).join(''); 
+        c.innerHTML+=`<div class="push-prog-day"><div class="push-prog-header"><span>${l}</span></div><div class="push-sets-list">${chips}</div></div>`;
+      }
+    }
+
+    function toggleSet(dIdx, sIdx) {
+      let s=currentSeries===1?stateS1:stateS2; let d=s[dIdx]; 
+      if(!d.setsDone)d.setsDone=[false,false,false,false,false]; 
+      d.setsDone[sIdx]=!d.setsDone[sIdx]; let wasDone = d.done; d.done=d.setsDone.every(Boolean); 
+      let today = new Date().toISOString().split('T')[0];
+      if (d.setsDone[sIdx]) { pushupHistory.push({ date: today, count: d.sets[sIdx], type: 'volume', dIdx: dIdx, sIdx: sIdx, series: currentSeries }); if(!d.done) startRestTimer(30); } 
+      else { let idx = pushupHistory.findIndex(h => h.type==='volume' && h.dIdx===dIdx && h.sIdx===sIdx && h.series===currentSeries); if(idx > -1) pushupHistory.splice(idx, 1); skipRestTimer(); }
+      localStorage.setItem(currentSeries===1?'progS1_v2':'progS2_v2', JSON.stringify(s)); localStorage.setItem('pushupHistory', JSON.stringify(pushupHistory));
+      updatePushupStats(); renderPushProgram();
+      if(!wasDone && d.done && !d.fatigueRated) { pendingFatigueDayIdx=dIdx; document.getElementById('fatigueModal').style.display='flex'; }
+      if(window.saveUserDataToCloud) window.saveUserDataToCloud();
+    }
+
+    function toggleDefi(dIdx) { 
+      let s=currentSeries===1?stateS1:stateS2; let d=s[dIdx]; d.done=!d.done; let today = new Date().toISOString().split('T')[0];
+      if(d.done){ pushupHistory.push({ date: today, count: d.target, type: 'record', isDefi: true, dIdx: dIdx, series: currentSeries }); speak("Défi validé !"); } 
+      localStorage.setItem(currentSeries===1?'progS1_v2':'progS2_v2', JSON.stringify(s)); localStorage.setItem('pushupHistory', JSON.stringify(pushupHistory));
+      updatePushupStats(); renderPushProgram(); applyPrestigeTheme(); updateHeaderTitle();
+      if(window.saveUserDataToCloud) window.saveUserDataToCloud();
+    }
+    
+    function rateFatigue(rating) { 
+      let s=currentSeries===1?stateS1:stateS2; s[pendingFatigueDayIdx].fatigueRated=true; 
+      localStorage.setItem(currentSeries===1?'progS1_v2':'progS2_v2', JSON.stringify(s)); 
+      document.getElementById('fatigueModal').style.display='none'; 
+      applyPrestigeTheme(); renderPushProgram(); 
+    }
+    
+    function adjustPush(amt) { currentPushCount=Math.max(0,currentPushCount+amt); document.getElementById('currentPushCount').innerText=currentPushCount; }
+    
+    function savePushSession() {
+      if(currentPushCount===0)return; 
+      pushupHistory.push({date:new Date().toISOString().split('T')[0], count:currentPushCount, type: 'record'}); 
+      localStorage.setItem('pushupHistory',JSON.stringify(pushupHistory)); 
+      speak("Nouveau Record Personnel !");
+      currentPushCount=0; document.getElementById('currentPushCount').innerText=0; 
+      updatePushupStats(); computeBadges(); applyPrestigeTheme(); updateHeaderTitle();
+      if(window.saveUserDataToCloud) window.saveUserDataToCloud();
+    }
+    
+    function updatePushupStats() {
+      let pushRecords = pushupHistory.filter(h => h.type !== 'volume'); 
+      let max = pushRecords.length ? Math.max(...pushRecords.map(s=>s.count)) : 0; 
+      document.getElementById('pushRecord').innerText=`Record: ${max}`; 
+      updateHeaderTitle();
+    }
+    
+    function renderBadges() { 
+      let bHtml = ''; calculatedBadges.forEach(b => { let fmtDate = b.date ? `${b.date.split('-')[2]}/${b.date.split('-')[1]}` : ''; bHtml += `<div class="badge-card ${b.date?'unlocked':''}"><span class="badge-icon">${b.icon}</span><div class="badge-title">${b.title}</div><div class="badge-desc">${b.desc}</div>${b.date?`<div class="badge-date">${fmtDate}</div>`:''}</div>`; }); document.getElementById('badgesContainer').innerHTML = bHtml; 
+    }
+
+    let calCurrentDate = new Date(); function changeMonth(dir){ calCurrentDate.setMonth(calCurrentDate.getMonth()+dir); renderCalendar(); }
+    function renderCalendar() {
+      const y=calCurrentDate.getFullYear(), m=calCurrentDate.getMonth(); document.getElementById('calMonthTitle').innerText=`${["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"][m]} ${y}`;
+      let grid=document.getElementById('calGridDays'); grid.innerHTML=''; let datesMap={}, scoreMap={};
+      plankHistory.forEach(h=>{if(!datesMap[h.date])datesMap[h.date]=[]; datesMap[h.date].push(`Planks: ${h.seconds}s`); scoreMap[h.date]=(scoreMap[h.date]||0)+(h.seconds/60);});
+      pushupHistory.forEach(h=>{ if(!datesMap[h.date])datesMap[h.date]=[]; let lbl = h.type==='volume' ? `Prog: ${h.count}` : `Record: ${h.count}`; datesMap[h.date].push(lbl); scoreMap[h.date]=(scoreMap[h.date]||0)+(h.count/10); });
+      for(let i=0; i<(new Date(y,m,1).getDay()+6)%7; i++) grid.innerHTML+=`<div class="cal-day" style="background:transparent; border:none;"></div>`;
+      for(let d=1; d<=new Date(y,m+1,0).getDate(); d++) {
+        let ds=`${y}-${(m+1).toString().padStart(2,'0')}-${d.toString().padStart(2,'0')}`;
+        let heatCls=''; if(scoreMap[ds]) heatCls=scoreMap[ds]>=5?'heatmap-3':scoreMap[ds]>=2?'heatmap-2':'heatmap-1';
+        let div = document.createElement('div'); div.className=`cal-day ${heatCls}`; div.innerHTML = `${d}`;
+        div.onclick = () => { document.getElementById('dayDetailsText').innerHTML = datesMap[ds] ? `<strong>${ds} :</strong><br>${datesMap[ds].join('<br>')}` : `Aucune activité le ${ds}.`; };
+        grid.appendChild(div);
+      }
+    }
+
+    function openSnapshot() { 
+      let pushRecords = pushupHistory.filter(h => h.type !== 'volume'); 
+      let maxPush = pushRecords.length ? Math.max(...pushRecords.map(s=>s.count)) : 0; 
+      let maxPlank = plankHistory.length ? Math.max(...plankHistory.map(s=>s.seconds)) : 0; 
+      document.getElementById('snapStreak').innerText = `${currentStreak} j`; 
+      document.getElementById('snapPush').innerText = maxPush; 
+      document.getElementById('snapPlank').innerText = `${maxPlank}s`; 
+      document.getElementById('snapBadges').innerText = `${calculatedBadges.filter(b=>b.date).length} / 40`; 
+      document.getElementById('snapshotModal').style.display = 'flex'; 
+    }
+    function closeSnapshot() { document.getElementById('snapshotModal').style.display = 'none'; }
+    function exportToCSV() { let csv="data:text/csv;charset=utf-8,Date,Activite,Valeur\n"; plankHistory.forEach(h=>csv+=`${h.date},Planks,${h.seconds}s\n`); pushupHistory.forEach(h=>csv+=`${h.date},Push-pull,${h.count}\n`); let link=document.createElement("a"); link.setAttribute("href",encodeURI(csv)); link.setAttribute("download","core_push.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link); }
+    function triggerBackup() { navigator.clipboard.writeText(JSON.stringify({plankHistory, pushupHistory})).then(()=>alert("Copié !")); }
+    function resetData(type) { if(confirm("Effacer ?")){localStorage.clear(); location.reload();} }
+
+    window.refreshDataFromLocal();
+  </script>
+</body>
+</html>

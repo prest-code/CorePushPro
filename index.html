@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Core & Push Pro</title>
+  <title>Core & Push Pro 🚀</title>
 
   <!-- Firebase SDKs Compat -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -51,7 +51,6 @@
     }
     .btn-cloud:hover { background: var(--primary-container); color: var(--on-primary-container); }
 
-    /* Rappel des records */
     .record-banner {
       background: var(--surface-bright); border: 1px solid var(--primary-container);
       border-radius: 16px; padding: 8px 12px; margin-bottom: 12px;
@@ -60,7 +59,6 @@
     .record-val { color: var(--prep); font-weight: bold; }
     .edit-btn { background: transparent; border: none; color: var(--text-sec); cursor: pointer; font-size: 0.75rem; text-decoration: underline; }
 
-    /* Navigation par onglets */
     .tabs-nav {
       display: flex; background: var(--surface);
       border-radius: 100px; padding: 4px; margin-bottom: 16px;
@@ -79,7 +77,6 @@
     .tab-content { display: none; }
     .tab-content.active { display: block; }
 
-    /* Cartes */
     .card { 
       background: var(--surface); border-radius: 24px; padding: 18px; 
       margin-bottom: 14px; box-shadow: 0 6px 14px rgba(0,0,0,0.4);
@@ -100,7 +97,6 @@
 
     h3 { margin-top: 0; color: var(--primary); font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; justify-content: space-between; }
 
-    /* Carrousel Horizontal des Variantes */
     .variants-scroll {
       display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 14px;
       scrollbar-width: none;
@@ -118,7 +114,6 @@
       padding: 8px 12px; border-radius: 12px; margin-bottom: 14px; border-left: 3px solid var(--primary);
     }
 
-    /* Mode Piédestal */
     .pedestal-mode {
       position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
       background: var(--bg); z-index: 9999; display: flex; flex-direction: column;
@@ -130,7 +125,6 @@
       color: var(--text); border: none; padding: 10px 20px; border-radius: 20px; font-weight: bold; cursor: pointer;
     }
 
-    /* Chrono */
     .timer-container { text-align: center; margin: 10px 0 15px 0; position: relative; }
     .medal-ring {
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -55%);
@@ -173,13 +167,11 @@
     .btn-tabata { background: var(--work); color: #410002; }
     .btn-pedestal { background: transparent; border: 1px solid rgba(255,255,255,0.15); color: var(--text-sec); padding: 6px 12px; font-size: 0.75rem; border-radius: 12px; }
     
-    /* Push-pull UI */
     .push-counter-display { font-size: 3rem; font-weight: 800; text-align: center; color: var(--primary); margin: 5px 0; }
     .push-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; }
     .btn-counter { background: var(--surface-bright); color: var(--text); font-size: 0.95rem; padding: 12px 0; border-radius: 14px; }
     .btn-counter.plus { background: var(--primary-container); color: var(--on-primary-container); }
 
-    /* Vue fenêtrée à 4 éléments pour la feuille de route */
     .prog-switcher { display: flex; gap: 8px; margin-bottom: 12px; }
     .prog-tab { flex: 1; background: var(--surface-bright); border: none; padding: 8px; border-radius: 10px; color: var(--text-sec); font-weight: bold; font-size: 0.8rem; cursor: pointer; }
     .prog-tab.active { background: var(--primary); color: var(--on-primary); }
@@ -193,7 +185,6 @@
     .set-chip { background: var(--bg); border: 1px solid rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 8px; font-size: 0.75rem; cursor: pointer; }
     .set-chip.checked { background: var(--success); color: #002114; border-color: var(--success); text-decoration: line-through; }
 
-    /* Objectifs multiples */
     .goals-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
     .goal-box { background: var(--surface-bright); padding: 12px; border-radius: 16px; text-align: center; }
     .goal-box span { font-size: 0.7rem; color: var(--text-sec); display: block; }
@@ -204,7 +195,6 @@
     .stats-text { display: flex; justify-content: space-between; color: var(--text-sec); font-size: 0.75rem; margin-top: 6px; font-weight: 500; }
     .chart-container { position: relative; height: 160px; width: 100%; margin-top: 8px; }
 
-    /* Badges */
     .badges-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; max-height: 450px; overflow-y: auto; padding-right: 4px; }
     .badge-card { background: var(--surface-bright); border-radius: 16px; padding: 12px; text-align: center; border: 1px solid rgba(255,255,255,0.04); opacity: 0.35; }
     .badge-card.unlocked { opacity: 1; border-color: var(--primary); background: rgba(79, 55, 139, 0.25); }
@@ -212,7 +202,6 @@
     .badge-title { font-weight: bold; font-size: 0.8rem; color: var(--text); margin-bottom: 2px; }
     .badge-desc { font-size: 0.65rem; color: var(--text-sec); }
 
-    /* Calendrier Data */
     .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-weight: bold; color: var(--primary); font-size: 0.9rem; }
     .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; }
     .cal-dow { font-size: 0.7rem; color: var(--text-sec); font-weight: bold; padding-bottom: 4px; }
@@ -232,7 +221,6 @@
       border: 1px dashed rgba(255, 180, 171, 0.3);
     }
 
-    /* Overlay d'Animation de Célébration */
     #fxOverlay {
       position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
       pointer-events: none; z-index: 999999; overflow: hidden; display: none;
@@ -251,7 +239,7 @@
   <div id="fxOverlay"></div>
 
   <header>
-    <h1>Core & Push Pro</h1>
+    <h1>Core & Push Pro 🚀</h1>
     <div class="header-info">
       <span class="streak-badge" id="streakText">🔥 Série : 0 j</span>
       <span id="voiceToggleSpan" style="cursor:pointer;" onclick="toggleVoice()">🔊 Vocal : ON</span>
@@ -271,7 +259,7 @@
     
     <div class="card" id="timerCard">
       <div class="record-banner">
-        <span>🏆 Record Plank : <span class="record-val" id="plankRecordDisplay">120 sec</span></span>
+        <span>🏆 Record Plank : <span class="record-val" id="plankRecordDisplay">160 sec</span></span>
         <button class="edit-btn" onclick="updatePlankRecord()">Modifier</button>
       </div>
 
@@ -293,7 +281,7 @@
         <div class="medal-ring" id="medalRing"></div>
         <div class="timer" id="display">00:00</div>
         <div class="timer-label" id="timerLabel">Chrono Libre</div>
-        <div class="record-badge" id="recordBadge">Record : 02:00</div>
+        <div class="record-badge" id="recordBadge">Record : 02:40</div>
       </div>
       
       <div class="controls">
@@ -423,7 +411,7 @@
     <div class="card">
       <h3>🏆 Records en mémoire</h3>
       <div style="font-size: 0.85rem; margin-bottom: 12px;">
-        <div>• Gainage : <strong id="dashPlankRecord">120 sec</strong></div>
+        <div>• Gainage : <strong id="dashPlankRecord">160 sec</strong></div>
         <div>• Pompes : <strong id="dashPushRecord">31 réps</strong></div>
       </div>
 
@@ -475,9 +463,58 @@
 
 
   <script>
+    /* ================= HISTORIQUE REEL COMPLET INJECTE ================= */
+    const realPlankHistory = [
+      {"date":"2026-09-15","seconds":141,"variant":"Standard"},
+      {"date":"2026-09-22","seconds":100,"variant":"Standard"},
+      {"date":"2026-09-23","seconds":160,"variant":"Standard"},
+      {"date":"2026-09-24","seconds":160,"variant":"Standard"},
+      {"date":"2026-09-24","seconds":160,"variant":"Standard"},
+      {"date":"2026-09-25","seconds":160,"variant":"Standard"},
+      {"date":"2026-09-25","seconds":52,"variant":"Standard"},
+      {"date":"2026-09-26","seconds":160,"variant":"Standard"},
+      {"date":"2026-09-26","seconds":121,"variant":"Standard"}
+    ];
+
+    const realPushupHistory = [
+      {"type":"record","date":"2026-09-22","count":30,"variant":"Standard"},
+      {"type":"record","count":31,"date":"2026-09-23","variant":"Standard"},
+      {"type":"record","date":"2026-09-24","count":30,"variant":"Standard"},
+      {"type":"record","date":"2026-09-24","count":30,"variant":"Standard"},
+      {"series":1,"type":"volume","dIdx":0,"count":5,"sIdx":0,"date":"2026-09-24","variant":"Standard"},
+      {"series":1,"type":"volume","dIdx":0,"count":5,"sIdx":1,"date":"2026-09-24","variant":"Standard"},
+      {"series":1,"type":"volume","dIdx":0,"count":4,"sIdx":2,"date":"2026-09-24","variant":"Standard"},
+      {"series":1,"type":"volume","dIdx":0,"count":3,"sIdx":3,"date":"2026-09-24","variant":"Standard"},
+      {"series":1,"type":"volume","dIdx":0,"count":2,"sIdx":4,"date":"2026-09-24","variant":"Standard"},
+      {"series":1,"type":"volume","dIdx":1,"count":7,"sIdx":0,"date":"2026-09-24","variant":"Standard"},
+      {"series":1,"type":"volume","dIdx":1,"count":6,"sIdx":1,"date":"2026-09-24","variant":"Standard"},
+      {"series":1,"type":"volume","dIdx":1,"count":5,"sIdx":2,"date":"2026-09-24","variant":"Standard"},
+      {"series":1,"type":"volume","dIdx":1,"count":4,"sIdx":3,"date":"2026-09-24","variant":"Standard"},
+      {"series":1,"type":"volume","dIdx":1,"count":3,"sIdx":4,"date":"2026-09-24","variant":"Standard"},
+      {"series":1,"type":"volume","dIdx":2,"count":9,"sIdx":0,"date":"2026-09-25","variant":"Standard"},
+      {"series":1,"type":"volume","dIdx":2,"count":7,"sIdx":1,"date":"2026-09-25","variant":"Standard"},
+      {"series":1,"type":"volume","dIdx":2,"count":6,"sIdx":2,"date":"2026-09-25","variant":"Standard"},
+      {"series":1,"type":"volume","dIdx":2,"count":5,"sIdx":3,"date":"2026-09-25","variant":"Standard"},
+      {"series":1,"type":"volume","dIdx":2,"count":4,"sIdx":4,"date":"2026-09-25","variant":"Standard"},
+      {"series":1,"type":"volume","dIdx":3,"count":11,"sIdx":0,"date":"2026-09-26","variant":"Standard"},
+      {"series":1,"type":"volume","dIdx":3,"count":8,"sIdx":1,"date":"2026-09-26","variant":"Standard"},
+      {"series":1,"type":"volume","dIdx":3,"count":7,"sIdx":2,"date":"2026-09-26","variant":"Standard"},
+      {"series":1,"type":"volume","dIdx":3,"count":6,"sIdx":3,"date":"2026-09-26","variant":"Standard"},
+      {"series":1,"type":"volume","dIdx":3,"count":5,"sIdx":4,"date":"2026-09-26","variant":"Standard"},
+      {"series":1,"type":"volume","dIdx":4,"count":13,"sIdx":0,"date":"2026-09-26","variant":"Standard"},
+      {"series":1,"type":"volume","dIdx":4,"count":9,"sIdx":1,"date":"2026-09-26","variant":"Standard"},
+      {"series":1,"type":"volume","dIdx":4,"count":8,"sIdx":2,"date":"2026-09-26","variant":"Standard"},
+      {"series":1,"type":"volume","dIdx":4,"count":7,"sIdx":3,"date":"2026-09-26","variant":"Standard"},
+      {"series":1,"type":"volume","dIdx":4,"count":6,"sIdx":4,"date":"2026-09-26","variant":"Standard"}
+    ];
+
+    // Forcer la sauvegarde locale pour réinitialiser le cache avec l'historique complet
+    localStorage.setItem('planksHistory', JSON.stringify(realPlankHistory));
+    localStorage.setItem('pushupHistory', JSON.stringify(realPushupHistory));
+
     /* ================= INITIALISATION DES RECORDS ================= */
     let records = {
-      plank: parseInt(localStorage.getItem('record_plank')) || 120,
+      plank: parseInt(localStorage.getItem('record_plank')) || 160,
       push: parseInt(localStorage.getItem('record_push')) || 31
     };
 
@@ -671,22 +708,6 @@
       setTimeout(() => { overlay.style.display = 'none'; overlay.innerHTML = ''; }, 2000);
     }
 
-    /* ================= INITIALISATION HISTORIQUE ================= */
-    if (!localStorage.getItem('initialized_history_v7')) {
-      const initialPlanks = [
-        { date: '2026-09-15', seconds: 141, variant: 'Standard' },
-        { date: '2026-09-22', seconds: 100, variant: 'Standard' },
-        { date: '2026-09-23', seconds: 160, variant: 'Standard' }
-      ];
-      const initialPush = [
-        { date: '2026-09-22', count: 30, variant: 'Standard' },
-        { date: '2026-09-23', count: 31, variant: 'Standard' }
-      ];
-      localStorage.setItem('planksHistory', JSON.stringify(initialPlanks));
-      localStorage.setItem('pushupHistory', JSON.stringify(initialPush));
-      localStorage.setItem('initialized_history_v7', 'true');
-    }
-
     /* ================= GESTION DES VARIANTES ================= */
     let selectedPlankVariant = 'Standard';
     let selectedPushVariant = 'Standard';
@@ -809,7 +830,7 @@
     /* ================= MODULE 1 : PLANKS ================= */
     let interval = null;
     let plankChartInstance = null;
-    let plankHistory = JSON.parse(localStorage.getItem('planksHistory')) || [];
+    let plankHistory = JSON.parse(localStorage.getItem('planksHistory')) || realPlankHistory;
     let standardSecs = 0; 
     let isStandardRunning = false;
     let isTabataRunning = false;
@@ -981,7 +1002,7 @@
     /* ================= MODULE 2 : PUSH-PULL ================= */
     let currentPushCount = 0;
     let pushupChartInstance = null;
-    let pushupHistory = JSON.parse(localStorage.getItem('pushupHistory')) || [];
+    let pushupHistory = JSON.parse(localStorage.getItem('pushupHistory')) || realPushupHistory;
     let currentSeries = 1;
 
     const series1Days = Array.from({length: 15}, (_, i) => ({
@@ -1079,7 +1100,7 @@
       if (currentPushCount === 0) return;
       const maxBefore = Math.max(records.push, pushupHistory.length > 0 ? Math.max(...pushupHistory.map(s => s.count)) : 0);
       
-      pushupHistory.push({ date: new Date().toISOString().split('T')[0], count: currentPushCount, variant: selectedPushVariant });
+      pushupHistory.push({ date: new Date().toISOString().split('T')[0], count: currentPushCount, variant: selectedPushVariant, type: "manual" });
       localStorage.setItem('pushupHistory', JSON.stringify(pushupHistory));
       
       if (currentPushCount > maxBefore) { 
@@ -1173,8 +1194,15 @@
       const totalDays = new Date(year, month + 1, 0).getDate();
 
       const activeDatesMap = {};
-      plankHistory.forEach(h => { if(!activeDatesMap[h.date]) activeDatesMap[h.date] = []; activeDatesMap[h.date].push(`Planks (${h.variant || 'Standard'}) : ${h.seconds}s`); });
-      pushupHistory.forEach(h => { if(!activeDatesMap[h.date]) activeDatesMap[h.date] = []; activeDatesMap[h.date].push(`Push-pull (${h.variant || 'Standard'}) : ${h.count} reps`); });
+      plankHistory.forEach(h => { 
+        if(!activeDatesMap[h.date]) activeDatesMap[h.date] = []; 
+        activeDatesMap[h.date].push(`Planks : ${h.seconds}s`); 
+      });
+      
+      pushupHistory.forEach(h => { 
+        if(!activeDatesMap[h.date]) activeDatesMap[h.date] = []; 
+        activeDatesMap[h.date].push(`Push-pull : ${h.count} reps ${h.series ? `(Série ${h.series})` : ''}`); 
+      });
 
       for(let i = 0; i < firstDayIndex; i++) { gridDays.appendChild(Object.assign(document.createElement('div'), { className: 'cal-day empty' })); }
 

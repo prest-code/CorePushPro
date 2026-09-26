@@ -98,7 +98,6 @@
 
     h3 { margin-top: 0; color: var(--primary); font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; justify-content: space-between; }
 
-    /* Bulles compactes mode portrait téléphone */
     .variants-scroll { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 10px; scrollbar-width: none; }
     .variants-scroll::-webkit-scrollbar { display: none; }
     .variant-chip { background: var(--surface-bright); border: 1px solid rgba(255,255,255,0.08); color: var(--text-sec); padding: 6px 10px; border-radius: 100px; font-size: 0.7rem; font-weight: 600; white-space: nowrap; cursor: pointer; transition: all 0.2s; }
@@ -112,7 +111,6 @@
 
     .timer { font-size: 3.2rem; font-variant-numeric: tabular-nums; font-weight: 800; color: var(--primary); position: relative; z-index: 2; }
     .timer-label { color: var(--text-sec); font-size: 0.75rem; font-weight: 500; height: 14px; }
-    .record-badge { font-size: 0.7rem; color: var(--prep); margin-top: 4px; font-weight: 600; }
 
     .controls { display: flex; flex-direction: column; gap: 8px; }
     .row-btn { display: flex; gap: 6px; }
@@ -147,11 +145,12 @@
     .set-chip { background: var(--bg); border: 1px solid rgba(255,255,255,0.1); padding: 5px 10px; border-radius: 8px; font-size: 0.75rem; cursor: pointer; font-weight: bold; transition: all 0.2s; }
     .set-chip.checked { background: var(--success); color: #002114; border-color: var(--success); }
 
+    /* Feedbacks de difficulté (Facile=vert, OK=violet application, Difficile=rouge) */
     .feedback-bar { margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 6px; }
     .fb-row { display: flex; gap: 6px; justify-content: space-between; }
     .fb-btn { padding: 6px; border-radius: 8px; font-size: 0.7rem; font-weight: bold; cursor: pointer; border: none; flex: 1; text-align: center; }
     .fb-btn.green { background: #1b5e20; color: #a8f5d0; }
-    .fb-btn.gray { background: #424242; color: #e6e1e5; }
+    .fb-btn.purple { background: var(--primary-container); color: var(--on-primary-container); }
     .fb-btn.red { background: #b71c1c; color: #ffdad6; }
 
     .rest-banner {
@@ -241,7 +240,6 @@
         <div class="medal-ring" id="medalRing"></div>
         <div class="timer" id="display">00:00</div>
         <div class="timer-label" id="timerLabel">Chrono Libre</div>
-        <div class="record-badge" id="recordBadge">Record Libre : 02:00</div>
       </div>
       
       <div class="controls">
@@ -349,8 +347,8 @@
   <!-- ================= ONGLET TROPHÉES ================= -->
   <div id="badgesTab" class="tab-content">
     <div class="card">
-      <h3>🏆 Trophées & Accomplissements</h3>
-      <p style="font-size:0.65rem; color:var(--text-sec); margin-top:0; margin-bottom:10px;">Vos trophées de gainage libre et dates d'obtention.</p>
+      <h3>🏆 Hall des Trophées</h3>
+      <p style="font-size:0.65rem; color:var(--text-sec); margin-top:0; margin-bottom:10px;">Vos accomplissements et dates d'obtention.</p>
       <div class="badges-grid" id="badgesContainer"></div>
     </div>
   </div>
@@ -413,13 +411,12 @@
       {"type":"record","count":31,"date":"2026-09-23","variant":"Standard"}
     ];
 
-    if (!localStorage.getItem('initialized_history_v13')) {
+    if (!localStorage.getItem('initialized_history_v14')) {
       localStorage.setItem('planksHistory', JSON.stringify(realPlankHistory));
       localStorage.setItem('pushupHistory', JSON.stringify(realPushupHistory));
-      localStorage.setItem('initialized_history_v13', 'true');
+      localStorage.setItem('initialized_history_v14', 'true');
     }
 
-    // Record Plank basé uniquement sur le chrono libre (minimum 120s par défaut)
     function getPlankRecord() {
       const hist = JSON.parse(localStorage.getItem('planksHistory')) || [];
       const freeSessions = hist.filter(h => h.variant !== 'Tabata');
@@ -555,8 +552,6 @@
       document.getElementById('display').innerText = timeStr;
 
       const maxSecs = getPlankRecord();
-      document.getElementById('recordBadge').innerText = `Record Libre : ${Math.floor(maxSecs/60).toString().padStart(2,'0')}:${(maxSecs%60).toString().padStart(2,'0')}`;
-
       if (maxSecs > 15 && standardSecs >= maxSecs * 0.8) document.getElementById('medalRing').classList.add('active');
       else document.getElementById('medalRing').classList.remove('active');
     }
@@ -716,8 +711,8 @@
       { day: 40, ex: [{ name: "Standard", sets: 1, reps: "50 reps (Test Final)", rest: 0 }] },
     ];
 
-    let pushProgState = JSON.parse(localStorage.getItem('pushProgStateV4')) || [];
-    let currentTargetDay = parseInt(localStorage.getItem('pushTargetDayV4')) || 1;
+    let pushProgState = JSON.parse(localStorage.getItem('pushProgStateV5')) || [];
+    let currentTargetDay = parseInt(localStorage.getItem('pushTargetDayV5')) || 1;
     let currentPhase = currentTargetDay <= 20 ? 1 : 2;
 
     for(let i = 0; i < 40; i++) {
@@ -770,7 +765,7 @@
                 ${!state.feedback ? `
                     <div class="fb-row">
                       <button class="fb-btn green" onclick="rateDay(${dayIdx}, 'Facile')">Facile (+1j)</button>
-                      <button class="fb-btn gray" onclick="rateDay(${dayIdx}, 'OK')">OK (Suite)</button>
+                      <button class="fb-btn purple" onclick="rateDay(${dayIdx}, 'OK')">OK (Suite)</button>
                       <button class="fb-btn red" onclick="rateDay(${dayIdx}, 'Difficile')">Difficile (-1j)</button>
                     </div>
                 ` : ''}
@@ -838,8 +833,8 @@
     }
 
     function saveProgState() {
-      localStorage.setItem('pushProgStateV4', JSON.stringify(pushProgState));
-      localStorage.setItem('pushTargetDayV4', currentTargetDay);
+      localStorage.setItem('pushProgStateV5', JSON.stringify(pushProgState));
+      localStorage.setItem('pushTargetDayV5', currentTargetDay);
       syncCloudFirestore();
     }
 
@@ -885,37 +880,47 @@
       });
     }
 
-    /* ================= MODULE 3 : TROPHÉES & DATES D'OBTENTION ================= */
+    /* ================= MODULE 3 : TOUS LES TROPHÉES AVEC DATES ================= */
     function renderBadges() {
       const plankHistory = JSON.parse(localStorage.getItem('planksHistory')) || [];
+      const pushupHistory = JSON.parse(localStorage.getItem('pushupHistory')) || [];
       const freeSessions = plankHistory.filter(h => h.variant !== 'Tabata');
+      const totalPlankSecs = plankHistory.reduce((acc, h) => acc + h.seconds, 0);
+      const maxPush = getPushRecord(); const streak = calculateStreak();
 
-      // Recherche de la première date d'obtention pour chaque palier de gainage libre
       function getPlankBadgeDate(targetSecs) {
         const match = freeSessions.find(h => h.seconds >= targetSecs);
         return match ? `Obtenu le ${match.date.split('-').reverse().join('/')}` : 'Verrouillé';
       }
 
+      function getPushBadgeDate(targetReps) {
+        const match = pushupHistory.find(h => h.count >= targetReps);
+        return match ? `Obtenu le ${match.date.split('-').reverse().join('/')}` : 'Verrouillé';
+      }
+
       const badges = [
-        { icon: '⏱️', title: 'Gainage 2 min', secs: 120 },
-        { icon: '🧱', title: 'Gainage 3 min', secs: 180 },
-        { icon: '⚡', title: 'Gainage 4 min', secs: 240 },
-        { icon: '🔥', title: 'Gainage 5 min', secs: 300 },
-        { icon: '🚀', title: 'Gainage 6 min', secs: 360 },
-        { icon: '💪', title: 'Gainage 8 min', secs: 480 },
-        { icon: '👑', title: 'Gainage 9 min', secs: 540 },
-        { icon: '💎', title: 'Gainage 10 min', secs: 600 },
+        // Gainage Libre (Paliers spécifiques demandés)
+        { icon: '⏱️', title: 'Gainage 2 min', desc: 'Palier de 2 min', check: maxPush >= 0, date: getPlankBadgeDate(120), unlocked: getPlankBadgeDate(120) !== 'Verrouillé' },
+        { icon: '🧱', title: 'Gainage 3 min', desc: 'Palier de 3 min', date: getPlankBadgeDate(180), unlocked: getPlankBadgeDate(180) !== 'Verrouillé' },
+        { icon: '⚡', title: 'Gainage 4 min', desc: 'Palier de 4 min', date: getPlankBadgeDate(240), unlocked: getPlankBadgeDate(240) !== 'Verrouillé' },
+        { icon: '🔥', title: 'Gainage 5 min', desc: 'Palier de 5 min', date: getPlankBadgeDate(300), unlocked: getPlankBadgeDate(300) !== 'Verrouillé' },
+        { icon: '🚀', title: 'Gainage 6 min', desc: 'Palier de 6 min', date: getPlankBadgeDate(360), unlocked: getPlankBadgeDate(360) !== 'Verrouillé' },
+        { icon: '💪', title: 'Gainage 8 min', desc: 'Palier de 8 min', date: getPlankBadgeDate(480), unlocked: getPlankBadgeDate(480) !== 'Verrouillé' },
+        { icon: '👑', title: 'Gainage 9 min', desc: 'Palier de 9 min', date: getPlankBadgeDate(540), unlocked: getPlankBadgeDate(540) !== 'Verrouillé' },
+        { icon: '💎', title: 'Gainage 10 min', desc: 'Palier de 10 min', date: getPlankBadgeDate(600), unlocked: getPlankBadgeDate(600) !== 'Verrouillé' },
+        // Trophées Historiques conservés
+        { icon: '🧱', title: 'Maçon 1', desc: 'Cumuler 5 min', date: totalPlankSecs >= 300 ? 'Débloqué' : 'Verrouillé', unlocked: totalPlankSecs >= 300 },
+        { icon: '💪', title: 'Force 1', desc: 'Atteindre 10 reps', date: maxPush >= 10 ? 'Débloqué' : 'Verrouillé', unlocked: maxPush >= 10 },
+        { icon: '🔥', title: 'Flamme 1', desc: 'Série de 1 jour', date: streak >= 1 ? 'Débloqué' : 'Verrouillé', unlocked: streak >= 1 },
+        { icon: '⚡', title: 'Premier Pas', desc: 'Première session', date: (totalPlankSecs > 0 || maxPush > 0) ? 'Débloqué' : 'Verrouillé', unlocked: (totalPlankSecs > 0 || maxPush > 0) },
+        { icon: '🚀', title: 'Explosion', desc: 'Plus de 50 pompes', date: maxPush >= 50 ? 'Débloqué' : 'Verrouillé', unlocked: maxPush >= 50 },
       ];
 
       const container = document.getElementById('badgesContainer'); container.innerHTML = '';
       badges.forEach(b => {
-        const recordMax = freeSessions.length > 0 ? Math.max(...freeSessions.map(h => h.seconds)) : 0;
-        const isUnlocked = recordMax >= b.secs;
-        const dateStr = isUnlocked ? getPlankBadgeDate(b.secs) : 'Verrouillé';
-
         const div = document.createElement('div');
-        div.className = `badge-card ${isUnlocked ? 'unlocked' : ''}`;
-        div.innerHTML = `<span class="badge-icon">${b.icon}</span><div class="badge-title">${b.title}</div><div class="badge-desc">Palier de ${b.secs/60} min</div><div class="badge-date">${dateStr}</div>`;
+        div.className = `badge-card ${b.unlocked ? 'unlocked' : ''}`;
+        div.innerHTML = `<span class="badge-icon">${b.icon}</span><div class="badge-title">${b.title}</div><div class="badge-desc">${b.desc}</div><div class="badge-date">${b.date}</div>`;
         container.appendChild(div);
       });
     }

@@ -42,9 +42,6 @@
  .tab-content { display: none; } .tab-content.active { display: block; }  
  .card { background: var(--surface); border-radius: 24px; padding: 18px; margin-bottom: 14px; border: 1px solid rgba(255,255,255,0.06); transition: 0.3s; }  
  h3 { margin-top: 0; color: var(--primary); font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; justify-content: space-between; transition: 0.3s; }  
- .record-banner { background: var(--surface-bright); border: 1px solid var(--primary-container); border-radius: 16px; padding: 8px 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; }
- .record-val { color: var(--prep); font-weight: bold; }
- .edit-btn { background: transparent; border: none; color: var(--text-sec); cursor: pointer; font-size: 0.75rem; text-decoration: underline; }
  .timer-container { text-align: center; margin: 10px 0 15px 0; position: relative; }  
  .timer { font-size: 3.5rem; font-variant-numeric: tabular-nums; font-weight: 800; color: var(--primary); position: relative; z-index: 2; transition: 0.3s; }  
  .timer-label { color: var(--text-sec); font-size: 0.8rem; font-weight: 500; height: 16px; }  
@@ -77,10 +74,6 @@
   
  <div id="plankTab" class="tab-content active">  
   <div class="card" id="timerCard">  
-   <div class="record-banner">
-    <span>🏆 Record Plank : <span class="record-val" id="plankRecordDisplay">120 sec</span></span>
-    <button class="edit-btn" onclick="updatePlankRecord()">Modifier</button>
-   </div>
    <div class="timer-container">
     <div class="timer" id="display">00:00</div>
     <div class="timer-label" id="timerLabel">Chrono Libre</div>
@@ -93,10 +86,6 @@
 
  <div id="pushupTab" class="tab-content">  
   <div class="card">  
-   <div class="record-banner">
-    <span>🏆 Record Pompes : <span class="record-val" id="pushRecordDisplay">31 réps</span></span>
-    <button class="edit-btn" onclick="updatePushRecord()">Modifier</button>
-   </div>
    <h3>Compteur de Pompes</h3>  
    <div class="push-counter-display" id="pushCount">0</div>  
    <div class="row-btn">  
@@ -108,11 +97,6 @@
 
  <div id="dashboardTab" class="tab-content">  
   <div class="card">  
-   <h3>🏆 Records personnels</h3>
-   <div style="font-size: 0.85rem; margin-bottom: 12px;">
-    <div>• Gainage : <strong id="dashPlankRecord">120 sec</strong></div>
-    <div>• Pompes : <strong id="dashPushRecord">31 réps</strong></div>
-   </div>
    <h3>☁️ Historique Firestore</h3>  
    <div id="historiqueStatus" style="color: var(--text-sec); font-size: 0.8rem;">Cliquez sur ☁️ Cloud pour synchroniser.</div>
    <div class="historique-container" id="historiqueList"></div>
@@ -120,40 +104,7 @@
  </div>  
 
  <script>
-  // Initialisation des records par défaut
-  let records = {
-    plank: parseInt(localStorage.getItem('record_plank')) || 120,
-    push: parseInt(localStorage.getItem('record_push')) || 31
-  };
-
-  function displayRecords() {
-    document.getElementById('plankRecordDisplay').textContent = records.plank + ' sec';
-    document.getElementById('pushRecordDisplay').textContent = records.push + ' réps';
-    document.getElementById('dashPlankRecord').textContent = records.plank + ' sec';
-    document.getElementById('dashPushRecord').textContent = records.push + ' réps';
-  }
-
-  function updatePlankRecord() {
-    const val = prompt("Nouveau record de Gainage (en secondes) :", records.plank);
-    if (val !== null && !isNaN(val) && val > 0) {
-      records.plank = parseInt(val);
-      localStorage.setItem('record_plank', records.plank);
-      displayRecords();
-      saveRecordsToFirestore();
-    }
-  }
-
-  function updatePushRecord() {
-    const val = prompt("Nouveau record de Pompes (nombre de répétitions) :", records.push);
-    if (val !== null && !isNaN(val) && val > 0) {
-      records.push = parseInt(val);
-      localStorage.setItem('record_push', records.push);
-      displayRecords();
-      saveRecordsToFirestore();
-    }
-  }
-
-  // Configuration Firebase
+  // Configuration Firebase (Injectée via Netlify / Repli local)
   const firebaseConfig = {
     apiKey: window.env?.FIREBASE_API_KEY || "AIzaSy_REPLACE_IF_NEEDED",
     authDomain: window.env?.FIREBASE_AUTH_DOMAIN || "corepushpro.firebaseapp.com",
@@ -163,43 +114,19 @@
     appId: window.env?.FIREBASE_APP_ID || "1:123456789:web:abc123def"
   };
 
+  // Initialisation Firestore
   let db;
   try {
     if (!firebase.apps.length) {
       firebase.initializeApp(firebaseConfig);
     }
     db = firebase.firestore();
-    loadRecordsFromFirestore();
+    console.log("Firestore initialisé avec succès.");
   } catch (e) {
-    console.error("Erreur Firebase :", e);
+    console.error("Erreur d'initialisation Firebase :", e);
   }
 
-  async function saveRecordsToFirestore() {
-    if (!db) return;
-    try {
-      await db.collection("utilisateur").doc("records").set(records, { merge: true });
-    } catch (e) {
-      console.error("Erreur de sauvegarde des records sur Firestore :", e);
-    }
-  }
-
-  async function loadRecordsFromFirestore() {
-    if (!db) return;
-    try {
-      const doc = await db.collection("utilisateur").doc("records").get();
-      if (doc.exists) {
-        const data = doc.data();
-        if (data.plank) records.plank = data.plank;
-        if (data.push) records.push = data.push;
-        localStorage.setItem('record_plank', records.plank);
-        localStorage.setItem('record_push', records.push);
-        displayRecords();
-      }
-    } catch (e) {
-      console.error("Erreur de chargement des records depuis Firestore :", e);
-    }
-  }
-
+  // Changement d'onglets
   function switchTab(tab) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -217,37 +144,38 @@
     }
   }
 
+  // Synchronisation Cloud Firestore
   async function syncCloudFirestore() {
     const btn = document.getElementById('btnCloud');
     const status = document.getElementById('historiqueStatus');
     btn.textContent = "🔄 ...";
     
     if (!db) {
-      alert("Firestore non connecté.");
+      alert("Firestore n'est pas connecté. Vérifiez vos variables d'environnement Netlify.");
       btn.textContent = "❌ Erreur";
       return;
     }
 
     try {
+      // Exemple d'envoi de la session courante vers Firestore
       const today = new Date().toISOString().split('T')[0];
       await db.collection("historique").doc(today).set({
         date: firebase.firestore.FieldValue.serverTimestamp(),
         pushups: parseInt(document.getElementById('pushCount').textContent) || 0,
-        records: records,
         source: "Web App CorePushPro"
       }, { merge: true });
-
-      await saveRecordsToFirestore();
 
       btn.textContent = "☁️ Synchronisé";
       if (status) status.textContent = "Dernière synchro : " + new Date().toLocaleTimeString();
       chargerHistoriqueFirestore();
     } catch (err) {
-      console.error("Erreur Firestore :", err);
+      console.error("Erreur lors de la synchronisation Firestore :", err);
       btn.textContent = "❌ Erreur";
+      if (status) status.textContent = "Erreur de synchro : " + err.message;
     }
   }
 
+  // Récupération de l'historique Firestore
   async function chargerHistoriqueFirestore() {
     const container = document.getElementById('historiqueList');
     if (!container || !db) return;
@@ -272,10 +200,11 @@
         container.appendChild(item);
       });
     } catch (e) {
-      console.error("Erreur historique :", e);
+      console.error("Erreur de chargement de l'historique :", e);
     }
   }
 
+  // Logique du compteur de pompes
   let pushs = 0;
   function addPushups(val) {
     pushs += val;
@@ -286,20 +215,19 @@
     document.getElementById('pushCount').textContent = pushs;
   }
 
+  // Toggle vocal factice
   let voiceOn = true;
   function toggleVoice() {
     voiceOn = !voiceOn;
     document.getElementById('voiceToggleSpan').textContent = voiceOn ? "🔊 Vocal : ON" : "🔇 Vocal : OFF";
   }
 
+  // Chrono factice
   let running = false;
   function toggleStandardTimer() {
     running = !running;
     document.getElementById('startBtn').textContent = running ? "Pause" : "Start Libre";
   }
-
-  // Affichage initial des records au chargement
-  displayRecords();
  </script>  
 </body>  
 </html>

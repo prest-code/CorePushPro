@@ -38,12 +38,13 @@
       padding-bottom: 90px; overflow-x: hidden;
     }
     
-    /* En-tête centré et épuré (Correction de la bulle Cloud) */
+    /* En-tête centré et épuré */
     header { text-align: center; margin-bottom: 16px; }
     h1 { font-weight: 700; margin: 0 0 4px 0; font-size: 1.5rem; background: linear-gradient(45deg, #d0bcff, #efb8c8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
     
     .header-info { 
       display: flex; 
+      flex-direction: row;
       justify-content: center; 
       align-items: center; 
       gap: 12px; 
@@ -51,14 +52,18 @@
       color: var(--text-sec); 
       margin-top: 4px; 
     }
-    .streak-badge { color: var(--prep); font-weight: bold; }
+    .streak-badge { color: var(--prep); font-weight: bold; white-space: nowrap; }
+    #voiceToggleSpan { white-space: nowrap; }
 
     .btn-cloud {
       background: transparent; color: var(--primary);
-      border: 1px solid var(--primary); padding: 4px 10px; border-radius: 20px;
+      border: 1px solid var(--primary); padding: 4px 12px; border-radius: 20px;
       font-weight: bold; font-size: 0.75rem; cursor: pointer; transition: 0.2s;
       display: inline-flex; align-items: center; gap: 4px;
-      width: max-content; /* Empêche le bouton de s'étirer */
+      /* C'est ici que la magie opère pour empêcher l'étirement : */
+      flex: none !important; 
+      width: fit-content;
+      white-space: nowrap;
     }
     .btn-cloud:hover { background: var(--primary-container); color: var(--on-primary-container); }
 
@@ -168,7 +173,7 @@
     }
     .rest-banner.visible { transform: translateX(-50%) translateY(0); }
     .rest-banner span { font-size: 0.9rem; font-weight: bold; color: var(--text); }
-    .rest-banner button { padding: 6px 14px; font-size: 0.75rem; background: var(--primary-container); color: var(--on-primary-container); border-radius: 20px; cursor: pointer; }
+    .rest-banner button { padding: 6px 14px; font-size: 0.75rem; background: var(--primary-container); color: var(--on-primary-container); border-radius: 20px; cursor: pointer; flex: none; }
 
     .goals-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
     .goal-box { background: var(--surface-bright); padding: 12px; border-radius: 16px; text-align: center; }
@@ -459,10 +464,10 @@
       {"series":1,"type":"volume","dIdx":4,"count":6,"sIdx":4,"date":"2026-09-26","variant":"Standard"}
     ];
 
-    if (!localStorage.getItem('initialized_history_v11')) {
+    if (!localStorage.getItem('initialized_history_v12')) {
       localStorage.setItem('planksHistory', JSON.stringify(realPlankHistory));
       localStorage.setItem('pushupHistory', JSON.stringify(realPushupHistory));
-      localStorage.setItem('initialized_history_v11', 'true');
+      localStorage.setItem('initialized_history_v12', 'true');
     }
 
     function getPlankRecord() {

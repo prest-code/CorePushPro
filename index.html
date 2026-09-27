@@ -145,10 +145,10 @@
     .set-chip { background: var(--bg); border: 1px solid rgba(255,255,255,0.1); padding: 5px 10px; border-radius: 8px; font-size: 0.75rem; cursor: pointer; font-weight: bold; transition: all 0.2s; }
     .set-chip.checked { background: var(--success); color: #002114; border-color: var(--success); }
 
-    /* Feedbacks de difficulté harmonisés */
+    /* Feedbacks de difficulté harmonisés sans parenthèses */
     .feedback-bar { margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 6px; }
     .fb-row { display: flex; gap: 6px; justify-content: space-between; }
-    .fb-btn { padding: 6px; border-radius: 8px; font-size: 0.7rem; font-weight: bold; cursor: pointer; border: none; flex: 1; text-align: center; }
+    .fb-btn { padding: 8px; border-radius: 8px; font-size: 0.75rem; font-weight: bold; cursor: pointer; border: none; flex: 1; text-align: center; }
     .fb-btn.green { background: #1b5e20; color: #a8f5d0; }
     .fb-btn.purple { background: var(--primary-container); color: var(--on-primary-container); }
     .fb-btn.red { background: #b71c1c; color: #ffdad6; }
@@ -188,11 +188,11 @@
     .cal-day.empty { background: transparent; border: none; cursor: default; }
     .cal-day.active-practice { background: var(--primary-container); color: var(--on-primary-container); font-weight: bold; }
     
-    /* Mini-logo trophée dans le calendrier */
     .cal-badge-indicator { position: absolute; bottom: 2px; right: 2px; font-size: 0.55rem; background: rgba(208, 188, 255, 0.2); border-radius: 50%; width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; }
 
     .day-details-box { margin-top: 10px; background: var(--surface-bright); padding: 10px; border-radius: 12px; font-size: 0.75rem; color: var(--text-sec); }
-    .day-details-box strong { color: var(--text); display: block; margin-bottom: 2px; }
+    .day-details-box strong { color: var(--text); display: block; margin-bottom: 4px; }
+    .day-details-box .trophy-mention { color: var(--prep); font-weight: bold; margin-top: 4px; display: block; }
 
     #fxOverlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 999999; overflow: hidden; display: none; }
     .fx-particle { position: absolute; animation: fallLinear 1.5s ease-in forwards; }
@@ -272,7 +272,7 @@
         <strong id="weekGoalText">0 / 15 min</strong>
       </div>
       <div class="goal-box">
-        <span>Objectif Global</span>
+        <span>Objectif Mensuel</span>
         <strong id="globalGoalText">0 / 60 min</strong>
       </div>
     </div>
@@ -381,7 +381,7 @@
 
       <div class="day-details-box" id="dayDetailsBox">
         <strong>Détails du jour</strong>
-        <span id="dayDetailsText">Cliquez sur une date colorée pour voir le rappel des exercices.</span>
+        <span id="dayDetailsText">Cliquez sur une date pour voir le rappel des exercices et des trophées.</span>
       </div>
     </div>
 
@@ -414,10 +414,10 @@
       {"type":"record","count":31,"date":"2026-09-23","variant":"Standard"}
     ];
 
-    if (!localStorage.getItem('initialized_history_v15')) {
+    if (!localStorage.getItem('initialized_history_v16')) {
       localStorage.setItem('planksHistory', JSON.stringify(realPlankHistory));
       localStorage.setItem('pushupHistory', JSON.stringify(realPushupHistory));
-      localStorage.setItem('initialized_history_v15', 'true');
+      localStorage.setItem('initialized_history_v16', 'true');
     }
 
     function getPlankRecord() {
@@ -714,8 +714,8 @@
       { day: 40, ex: [{ name: "Standard", sets: 1, reps: "50 reps (Test Final)", rest: 0 }] },
     ];
 
-    let pushProgState = JSON.parse(localStorage.getItem('pushProgStateV6')) || [];
-    let currentTargetDay = parseInt(localStorage.getItem('pushTargetDayV6')) || 1;
+    let pushProgState = JSON.parse(localStorage.getItem('pushProgStateV7')) || [];
+    let currentTargetDay = parseInt(localStorage.getItem('pushTargetDayV7')) || 1;
     let currentPhase = currentTargetDay <= 20 ? 1 : 2;
 
     for(let i = 0; i < 40; i++) {
@@ -762,14 +762,15 @@
             });
         }
         
+        // Boutons de difficulté sans parenthèses
         if (state.status === 'done' && !dayData.isRestDay) {
             html += `<div class="feedback-bar">
                 <span style="font-size:0.65rem; color:var(--text-sec);">Difficulté : ${state.feedback || 'Non notée'}</span>
                 ${!state.feedback ? `
                     <div class="fb-row">
-                      <button class="fb-btn green" onclick="rateDay(${dayIdx}, 'Facile')">Facile (+1j)</button>
-                      <button class="fb-btn purple" onclick="rateDay(${dayIdx}, 'OK')">OK (Suite)</button>
-                      <button class="fb-btn red" onclick="rateDay(${dayIdx}, 'Difficile')">Difficile (-1j)</button>
+                      <button class="fb-btn green" onclick="rateDay(${dayIdx}, 'Facile')">Facile</button>
+                      <button class="fb-btn purple" onclick="rateDay(${dayIdx}, 'OK')">OK</button>
+                      <button class="fb-btn red" onclick="rateDay(${dayIdx}, 'Difficile')">Difficile</button>
                     </div>
                 ` : ''}
             </div>`;
@@ -836,8 +837,8 @@
     }
 
     function saveProgState() {
-      localStorage.setItem('pushProgStateV6', JSON.stringify(pushProgState));
-      localStorage.setItem('pushTargetDayV6', currentTargetDay);
+      localStorage.setItem('pushProgStateV7', JSON.stringify(pushProgState));
+      localStorage.setItem('pushTargetDayV7', currentTargetDay);
       syncCloudFirestore();
     }
 
@@ -892,10 +893,8 @@
       const maxPush = getPushRecord();
       const streak = calculateStreak();
 
-      // Calcul des sessions par variante
       const countVariant = (vName) => freeSessions.filter(h => h.variant === vName).length;
 
-      // Calcul semaine & mois
       const now = new Date();
       let weekSecs = 0, monthSecs = 0;
       const dailyMap = {}; plankHistory.forEach(item => { dailyMap[item.date] = (dailyMap[item.date] || 0) + item.seconds; });
@@ -906,13 +905,10 @@
         if(dObj.getMonth() === now.getMonth() && dObj.getFullYear() === now.getFullYear()) monthSecs += dailyMap[dStr];
       });
 
-      // Recherche de la date d'obtention (pour le calendrier)
       function findDateForCondition(checkFn) {
-        // Parcours chronologique des jours enregistrés
         const allDates = Object.keys(dailyMap).sort();
         for(let dStr of allDates) {
-          // Simulation cumulée jusqu'à dStr
-          let cumSecs = 0, cumSes = 0;
+          let cumSecs = 0;
           for(let h of plankHistory) {
             if(h.date <= dStr) cumSecs += h.seconds;
           }
@@ -1000,7 +996,6 @@
       badges.forEach(b => {
         const div = document.createElement('div');
         div.className = `badge-card ${b.unlocked ? 'unlocked' : ''}`;
-        // Pas de mention de date dans le hall des trophées selon vos instructions
         div.innerHTML = `<span class="badge-icon">${b.icon}</span><div class="badge-title">${b.title}</div><div class="badge-desc">${b.desc}</div>`;
         container.appendChild(div);
       });
@@ -1026,13 +1021,13 @@
       plankHistory.forEach(h => { if(!activeDatesMap[h.date]) activeDatesMap[h.date] = []; activeDatesMap[h.date].push(`Planks (${h.variant||'Std'}) : ${h.seconds}s`); });
       pushupHistory.forEach(h => { if(!activeDatesMap[h.date]) activeDatesMap[h.date] = []; activeDatesMap[h.date].push(`Push-pull : ${h.count} reps`); });
 
-      // Mapper les trophées obtenus par date
+      // Cartographie des trophées débloqués par date
       const allBadges = getAllBadgesStatus();
-      const badgeDatesMap = {};
+      const badgesByDateMap = {};
       allBadges.forEach(b => {
         if(b.unlocked && b.date) {
-          if(!badgeDatesMap[b.date]) badgeDatesMap[b.date] = 0;
-          badgeDatesMap[b.date]++;
+          if(!badgesByDateMap[b.date]) badgesByDateMap[b.date] = [];
+          badgesByDateMap[b.date].push(b);
         }
       });
 
@@ -1042,20 +1037,37 @@
         const dateString = `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
         dayDiv.innerText = day;
 
-        // Mention ou mini-logo si trophée(s) obtenu(s) ce jour-là
-        if(badgeDatesMap[dateString]) {
+        // Puce visuelle trophée dans le calendrier
+        if(badgesByDateMap[dateString] && badgesByDateMap[dateString].length > 0) {
           const indicator = document.createElement('div');
           indicator.className = 'cal-badge-indicator';
           indicator.innerText = '🏆';
           dayDiv.appendChild(indicator);
         }
 
+        dayDiv.onclick = () => {
+          playSound('pop');
+          let detailsHtml = `<strong>Rappel du ${dateString} :</strong><br>`;
+          if (activeDatesMap[dateString]) {
+            detailsHtml += activeDatesMap[dateString].join('<br>');
+          } else {
+            detailsHtml += 'Aucune activité enregistrée.';
+          }
+
+          // Mention spécifique des trophées débloqués le jour sélectionné
+          if (badgesByDateMap[dateString] && badgesByDateMap[dateString].length > 0) {
+            detailsHtml += `<span class="trophy-mention"><br>🏆 Trophée(s) obtenu(s) :<br>`;
+            detailsHtml += badgesByDateMap[dateString].map(b => `• ${b.icon} ${b.title}`).join('<br>');
+            detailsHtml += `</span>`;
+          }
+
+          document.getElementById('dayDetailsText').innerHTML = detailsHtml;
+        };
+
         if(activeDatesMap[dateString]) {
           dayDiv.classList.add('active-practice');
-          dayDiv.onclick = () => { playSound('pop'); document.getElementById('dayDetailsText').innerHTML = `<strong>Rappel du ${dateString} :</strong><br>` + activeDatesMap[dateString].join('<br>'); };
-        } else {
-          dayDiv.onclick = () => { playSound('pop'); document.getElementById('dayDetailsText').innerHTML = `<strong>Rappel du ${dateString} :</strong><br>Aucune activité enregistrée.`; };
         }
+
         gridDays.appendChild(dayDiv);
       }
     }

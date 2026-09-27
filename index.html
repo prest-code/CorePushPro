@@ -145,7 +145,6 @@
     .set-chip { background: var(--bg); border: 1px solid rgba(255,255,255,0.1); padding: 5px 10px; border-radius: 8px; font-size: 0.75rem; cursor: pointer; font-weight: bold; transition: all 0.2s; }
     .set-chip.checked { background: var(--success); color: #002114; border-color: var(--success); }
 
-    /* Feedbacks de difficulté harmonisés sans parenthèses */
     .feedback-bar { margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 6px; }
     .fb-row { display: flex; gap: 6px; justify-content: space-between; }
     .fb-btn { padding: 8px; border-radius: 8px; font-size: 0.75rem; font-weight: bold; cursor: pointer; border: none; flex: 1; text-align: center; }
@@ -192,7 +191,7 @@
 
     .day-details-box { margin-top: 10px; background: var(--surface-bright); padding: 10px; border-radius: 12px; font-size: 0.75rem; color: var(--text-sec); }
     .day-details-box strong { color: var(--text); display: block; margin-bottom: 4px; }
-    .day-details-box .trophy-mention { color: var(--prep); font-weight: bold; margin-top: 4px; display: block; }
+    .day-details-box .trophy-mention { color: var(--prep); font-weight: bold; margin-top: 6px; display: block; }
 
     #fxOverlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 999999; overflow: hidden; display: none; }
     .fx-particle { position: absolute; animation: fallLinear 1.5s ease-in forwards; }
@@ -414,10 +413,10 @@
       {"type":"record","count":31,"date":"2026-09-23","variant":"Standard"}
     ];
 
-    if (!localStorage.getItem('initialized_history_v16')) {
+    if (!localStorage.getItem('initialized_history_v18')) {
       localStorage.setItem('planksHistory', JSON.stringify(realPlankHistory));
       localStorage.setItem('pushupHistory', JSON.stringify(realPushupHistory));
-      localStorage.setItem('initialized_history_v16', 'true');
+      localStorage.setItem('initialized_history_v18', 'true');
     }
 
     function getPlankRecord() {
@@ -455,6 +454,7 @@
           date: firebase.firestore.FieldValue.serverTimestamp(),
           planks: JSON.parse(localStorage.getItem('planksHistory')) || [],
           pushups: JSON.parse(localStorage.getItem('pushupHistory')) || [],
+          routeProgress: JSON.parse(localStorage.getItem('routeHistoryV18')) || [],
           source: "Web App"
         }, { merge: true });
         btn.innerHTML = "☁️ OK"; setTimeout(() => btn.innerHTML = "☁️ Cloud", 3000);
@@ -463,16 +463,18 @@
       }
     }
 
-    /* ================= AUDIO & FX ================= */
+    /* ================= AUDIO & FX (SANS CLICS TACTILES) ================= */
     let audioCtx = null;
     function getAudioContext() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); return audioCtx; }
+    
     function playSound(type) {
+      // Suppression des sons de clics tactiles ('pop' désactivé)
+      if (type === 'pop') return;
       try {
         const ctx = getAudioContext(); if (ctx.state === 'suspended') ctx.resume();
         const now = ctx.currentTime; const osc = ctx.createOscillator(); const gain = ctx.createGain();
         osc.connect(gain); gain.connect(ctx.destination);
-        if (type === 'pop') { osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); osc.frequency.exponentialRampToValueAtTime(800, now + 0.08); gain.gain.setValueAtTime(0.15, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08); osc.start(now); osc.stop(now + 0.08); }
-        else if (type === 'success') { osc.type = 'triangle'; osc.frequency.setValueAtTime(523.25, now); osc.frequency.setValueAtTime(659.25, now + 0.1); osc.frequency.setValueAtTime(783.99, now + 0.2); gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5); osc.start(now); osc.stop(now + 0.5); }
+        if (type === 'success') { osc.type = 'triangle'; osc.frequency.setValueAtTime(523.25, now); osc.frequency.setValueAtTime(659.25, now + 0.1); osc.frequency.setValueAtTime(783.99, now + 0.2); gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5); osc.start(now); osc.stop(now + 0.5); }
         else if (type === 'record') { osc.type = 'square'; osc.frequency.setValueAtTime(440, now); osc.frequency.setValueAtTime(554.37, now + 0.15); osc.frequency.setValueAtTime(659.25, now + 0.3); osc.frequency.setValueAtTime(880, now + 0.45); gain.gain.setValueAtTime(0.15, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.7); osc.start(now); osc.stop(now + 0.7); }
         else if (type === 'tabata') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, now); osc.frequency.exponentialRampToValueAtTime(600, now + 0.4); gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6); osc.start(now); osc.stop(now + 0.6); }
       } catch(e){}
@@ -491,7 +493,7 @@
     }
 
     let voiceEnabled = true;
-    function toggleVoice() { voiceEnabled = !voiceEnabled; document.getElementById('voiceToggleSpan').innerText = voiceEnabled ? "🔊 Vocal : ON" : "🔇 Vocal : OFF"; playSound('pop'); }
+    function toggleVoice() { voiceEnabled = !voiceEnabled; document.getElementById('voiceToggleSpan').innerText = voiceEnabled ? "🔊 Vocal : ON" : "🔇 Vocal : OFF"; }
     function speak(text) { if (!voiceEnabled || !('speechSynthesis' in window)) return; window.speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = 'fr-FR'; window.speechSynthesis.speak(u); }
     function triggerVibration(pattern) { if ("vibrate" in navigator) navigator.vibrate(pattern); }
 
@@ -502,7 +504,6 @@
     function switchTab(tabName) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
       document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-      playSound('pop');
       if(tabName === 'plank') { document.getElementById('plankTab').classList.add('active'); document.querySelectorAll('.tab-btn')[0].classList.add('active'); updatePlankStats(); }
       else if(tabName === 'pushup') { document.getElementById('pushupTab').classList.add('active'); document.querySelectorAll('.tab-btn')[1].classList.add('active'); updatePushupStats(); }
       else if(tabName === 'badges') { document.getElementById('badgesTab').classList.add('active'); document.querySelectorAll('.tab-btn')[2].classList.add('active'); renderBadges(); }
@@ -512,7 +513,8 @@
     function calculateStreak() {
       const plankHist = JSON.parse(localStorage.getItem('planksHistory')) || [];
       const pushHist = JSON.parse(localStorage.getItem('pushupHistory')) || [];
-      const dates = new Set([...plankHist.map(h => h.date), ...pushHist.map(h => h.date)]);
+      const routeHist = JSON.parse(localStorage.getItem('routeHistoryV18')) || [];
+      const dates = new Set([...plankHist.map(h => h.date), ...pushHist.map(h => h.date), ...routeHist.map(h => h.date)]);
       let streak = 0, d = new Date();
       while (true) {
         if (dates.has(d.toISOString().split('T')[0])) { streak++; d.setDate(d.getDate() - 1); }
@@ -535,13 +537,13 @@
     function selectPlankVariant(variant, btn) {
       selectedPlankVariant = variant;
       document.querySelectorAll('#plankVariantsScroll .variant-chip').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active'); document.getElementById('plankVariantDesc').innerText = plankDescriptions[variant]; playSound('pop');
+      btn.classList.add('active'); document.getElementById('plankVariantDesc').innerText = plankDescriptions[variant];
     }
 
     function selectPushVariant(variant, btn) {
       selectedPushVariant = variant;
       document.querySelectorAll('#pushVariantsScroll .variant-chip').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active'); document.getElementById('pushVariantDesc').innerText = pushDescriptions[variant]; playSound('pop');
+      btn.classList.add('active'); document.getElementById('pushVariantDesc').innerText = pushDescriptions[variant];
     }
 
     /* ================= MODULE 1 : PLANKS ================= */
@@ -560,7 +562,7 @@
     }
 
     function toggleStandardTimer() {
-      if (isTabataRunning) return; playSound('pop');
+      if (isTabataRunning) return;
       if (isStandardRunning) {
         clearInterval(interval); isStandardRunning = false;
         document.getElementById('startBtn').innerText = 'Reprendre'; document.getElementById('medalRing').classList.remove('active');
@@ -578,7 +580,7 @@
       const maxBefore = getPlankRecord();
       const history = JSON.parse(localStorage.getItem('planksHistory')) || [];
       const todayStr = new Date().toISOString().split('T')[0];
-      history.push({ date: todayStr, seconds: standardSecs, variant: selectedPlankVariant });
+      history.push({ date: todayStr, seconds: standardSecs, variant: selectedPlankVariant, type: "free" });
       localStorage.setItem('planksHistory', JSON.stringify(history));
 
       if (standardSecs > maxBefore) {
@@ -601,7 +603,7 @@
     }
 
     function startTabata() {
-      if (isStandardRunning) return; playSound('pop');
+      if (isStandardRunning) return;
       if (isTabataRunning) {
         clearInterval(interval); isTabataRunning = false;
         document.getElementById('workInput').disabled = false; document.getElementById('restInput').disabled = false;
@@ -617,27 +619,34 @@
 
       interval = setInterval(() => {
         tabataTimeLeft--;
-        if (tabataTimeLeft === 10) speak("Dix secondes");
         if (tabataTimeLeft < 0) {
           if (tabataPhase === 'prep') { tabataPhase = 'work'; tabataTimeLeft = workDur; triggerVibration([500]); speak("Effort"); }
           else if (tabataPhase === 'work') { tabataPhase = 'rest'; tabataTimeLeft = restDur; triggerVibration([150, 100, 150]); speak("Repos"); }
-          else { tabataCycle++; if (tabataCycle > 8) { endTabata(workDur); return; } tabataPhase = 'work'; tabataTimeLeft = workDur; triggerVibration([500]); speak("Effort"); }
+          else { tabataCycle++; if (tabataCycle > 8) { endTabata(workDur, restDur); return; } tabataPhase = 'work'; tabataTimeLeft = workDur; triggerVibration([500]); speak("Effort"); }
         }
         updateTabataDisplay();
       }, 1000);
     }
 
-    function endTabata(workDur) {
+    function endTabata(workDur, restDur) {
       clearInterval(interval); isTabataRunning = false;
       document.getElementById('workInput').disabled = false; document.getElementById('restInput').disabled = false;
       document.getElementById('tabataBtn').innerText = 'Lancer Tabata (x8)'; document.getElementById('timerCard').className = 'card'; 
       
       const totalSecs = 8 * workDur;
       const history = JSON.parse(localStorage.getItem('planksHistory')) || [];
-      history.push({ date: new Date().toISOString().split('T')[0], seconds: totalSecs, variant: 'Tabata' });
+      history.push({
+        date: new Date().toISOString().split('T')[0],
+        seconds: totalSecs,
+        variant: 'Tabata',
+        type: 'tabata',
+        work: workDur,
+        rest: restDur,
+        cycles: 8
+      });
       localStorage.setItem('planksHistory', JSON.stringify(history));
       
-      triggerVibration([500, 200, 500]); playSound('tabata'); triggerFX('shockwave'); speak("Tabata terminé !");
+      triggerVibration([500, 200, 500]); playSound('tabata'); triggerFX('confetti'); speak("Tabata terminé !");
       document.getElementById('display').innerText = "00:00"; document.getElementById('timerLabel').innerText = `Tabata validé (+${totalSecs}s)`;
       updatePlankStats(); calculateStreak(); syncCloudFirestore();
     }
@@ -714,8 +723,8 @@
       { day: 40, ex: [{ name: "Standard", sets: 1, reps: "50 reps (Test Final)", rest: 0 }] },
     ];
 
-    let pushProgState = JSON.parse(localStorage.getItem('pushProgStateV7')) || [];
-    let currentTargetDay = parseInt(localStorage.getItem('pushTargetDayV7')) || 1;
+    let pushProgState = JSON.parse(localStorage.getItem('pushProgStateV18')) || [];
+    let currentTargetDay = parseInt(localStorage.getItem('pushTargetDayV18')) || 1;
     let currentPhase = currentTargetDay <= 20 ? 1 : 2;
 
     for(let i = 0; i < 40; i++) {
@@ -726,7 +735,7 @@
     }
 
     function switchPhase(num) {
-      currentPhase = num; playSound('pop');
+      currentPhase = num;
       document.getElementById('btnSeries1').className = `prog-tab ${num === 1 ? 'active' : ''}`;
       document.getElementById('btnSeries2').className = `prog-tab ${num === 2 ? 'active' : ''}`;
       renderPushProgram();
@@ -762,7 +771,6 @@
             });
         }
         
-        // Boutons de difficulté sans parenthèses
         if (state.status === 'done' && !dayData.isRestDay) {
             html += `<div class="feedback-bar">
                 <span style="font-size:0.65rem; color:var(--text-sec);">Difficulté : ${state.feedback || 'Non notée'}</span>
@@ -781,6 +789,7 @@
       setTimeout(() => { const activeEl = document.querySelector('.active-day'); if(activeEl) activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 100);
     }
 
+    /* REPOS VOCAL : "Fin du repos dans 5, 4, 3, 2, 1, Go !" */
     let restInterval; let restSecondsLeft = 0;
     function startRestTimer(secs) {
       if(secs <= 0) return;
@@ -791,17 +800,22 @@
       clearInterval(restInterval);
       restInterval = setInterval(() => {
           restSecondsLeft--;
-          if(restSecondsLeft <= 0) { endRestTimer(false); triggerVibration([500, 200, 500]); playSound('success'); speak("Repos terminé"); } 
-          else { display.innerText = `${Math.floor(restSecondsLeft/60).toString().padStart(2,'0')}:${(restSecondsLeft%60).toString().padStart(2,'0')}`; }
+          
+          if (restSecondsLeft === 5) speak("Fin du repos dans 5, 4, 3, 2, 1, Go");
+          
+          if(restSecondsLeft <= 0) {
+            endRestTimer(false); triggerVibration([500, 200, 500]); playSound('success');
+          } else {
+            display.innerText = `${Math.floor(restSecondsLeft/60).toString().padStart(2,'0')}:${(restSecondsLeft%60).toString().padStart(2,'0')}`;
+          }
       }, 1000);
     }
+
     function endRestTimer(isManual) {
       clearInterval(restInterval); document.getElementById('restTimerBanner').classList.remove('visible');
-      if(isManual) playSound('pop');
     }
 
     function toggleSet(dayIdx, exIdx, setIdx, restSecs) {
-      playSound('pop');
       const state = pushProgState[dayIdx];
       state.setsDone[exIdx][setIdx] = !state.setsDone[exIdx][setIdx];
       
@@ -811,21 +825,39 @@
       if(state.setsDone[exIdx][setIdx] && !isAllDone && restSecs > 0) startRestTimer(restSecs);
       else endRestTimer(true);
 
-      if (isAllDone && !wasDone) { state.status = 'done'; triggerVibration([150, 100, 150]); playSound('success'); triggerFX('confetti'); }
-      else if (!isAllDone) { state.status = 'pending'; state.feedback = null; }
+      if (isAllDone && !wasDone) {
+        state.status = 'done';
+        triggerVibration([150, 100, 150]); playSound('success'); triggerFX('confetti');
+        logRouteDayCompletion(dayIdx + 1);
+      } else if (!isAllDone) {
+        state.status = 'pending'; state.feedback = null;
+      }
 
       saveProgState(); renderPushProgram();
     }
 
+    function logRouteDayCompletion(dayNum) {
+      const routeHistory = JSON.parse(localStorage.getItem('routeHistoryV18')) || [];
+      const todayStr = new Date().toISOString().split('T')[0];
+      const dayData = program40Days[dayNum - 1];
+      
+      let summary = `Jour ${dayNum} de la feuille de route validé !`;
+      if (dayData && dayData.ex) {
+        summary = `Jour ${dayNum} : ` + dayData.ex.map(e => `${e.sets}x${e.reps} (${e.name})`).join(' + ');
+      }
+      
+      routeHistory.push({ date: todayStr, day: dayNum, summary: summary });
+      localStorage.setItem('routeHistoryV18', JSON.stringify(routeHistory));
+    }
+
     function toggleRestDay(dayIdx) {
-      playSound('pop');
       pushProgState[dayIdx].status = 'done';
       if(currentTargetDay === dayIdx + 1) currentTargetDay = Math.min(40, currentTargetDay + 1);
+      logRouteDayCompletion(dayIdx + 1);
       saveProgState(); renderPushProgram();
     }
 
     function rateDay(dayIdx, rating) {
-      playSound('pop');
       pushProgState[dayIdx].feedback = rating;
       
       if (rating === 'Facile') currentTargetDay = Math.min(40, currentTargetDay + 2); 
@@ -837,15 +869,15 @@
     }
 
     function saveProgState() {
-      localStorage.setItem('pushProgStateV7', JSON.stringify(pushProgState));
-      localStorage.setItem('pushTargetDayV7', currentTargetDay);
+      localStorage.setItem('pushProgStateV18', JSON.stringify(pushProgState));
+      localStorage.setItem('pushTargetDayV18', currentTargetDay);
       syncCloudFirestore();
     }
 
     let currentPushCount = 0;
     function adjustPush(amount) {
       currentPushCount = Math.max(0, currentPushCount + amount);
-      document.getElementById('currentPushCount').innerText = currentPushCount; triggerVibration([25]); playSound('pop');
+      document.getElementById('currentPushCount').innerText = currentPushCount; triggerVibration([25]);
     }
 
     function savePushSession() {
@@ -1001,9 +1033,9 @@
       });
     }
 
-    /* ================= MODULE 4 : CALENDRIER & EXPORT ================= */
+    /* ================= MODULE 4 : CALENDRIER & HISTORIQUE ENRICHI ================= */
     let calCurrentDate = new Date();
-    function changeMonth(dir) { calCurrentDate.setMonth(calCurrentDate.getMonth() + dir); playSound('pop'); renderCalendar(); }
+    function changeMonth(dir) { calCurrentDate.setMonth(calCurrentDate.getMonth() + dir); renderCalendar(); }
 
     function renderCalendar() {
       const year = calCurrentDate.getFullYear(); const month = calCurrentDate.getMonth();
@@ -1016,12 +1048,33 @@
 
       const plankHistory = JSON.parse(localStorage.getItem('planksHistory')) || [];
       const pushupHistory = JSON.parse(localStorage.getItem('pushupHistory')) || [];
+      const routeHistory = JSON.parse(localStorage.getItem('routeHistoryV18')) || [];
+      
       const activeDatesMap = {};
       
-      plankHistory.forEach(h => { if(!activeDatesMap[h.date]) activeDatesMap[h.date] = []; activeDatesMap[h.date].push(`Planks (${h.variant||'Std'}) : ${h.seconds}s`); });
-      pushupHistory.forEach(h => { if(!activeDatesMap[h.date]) activeDatesMap[h.date] = []; activeDatesMap[h.date].push(`Push-pull : ${h.count} reps`); });
+      // Planks & Tabata
+      plankHistory.forEach(h => {
+        if(!activeDatesMap[h.date]) activeDatesMap[h.date] = [];
+        if (h.type === 'tabata' || h.variant === 'Tabata') {
+          activeDatesMap[h.date].push(`🔥 Tabata : ${h.work||20}s effort / ${h.rest||10}s repos (${h.cycles||8} cycles = ${h.seconds}s)`);
+        } else {
+          activeDatesMap[h.date].push(`⏱️ Gainage Libre (${h.variant||'Standard'}) : ${h.seconds}s`);
+        }
+      });
 
-      // Cartographie des trophées débloqués par date
+      // Pompes Libres
+      pushupHistory.forEach(h => {
+        if(!activeDatesMap[h.date]) activeDatesMap[h.date] = [];
+        activeDatesMap[h.date].push(`💪 Pompes : ${h.count} reps (${h.variant||'Standard'})`);
+      });
+
+      // Feuille de route Push-pull
+      routeHistory.forEach(h => {
+        if(!activeDatesMap[h.date]) activeDatesMap[h.date] = [];
+        activeDatesMap[h.date].push(`🗺️ Feuille de Route : ${h.summary}`);
+      });
+
+      // Trophées par date
       const allBadges = getAllBadgesStatus();
       const badgesByDateMap = {};
       allBadges.forEach(b => {
@@ -1037,7 +1090,7 @@
         const dateString = `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
         dayDiv.innerText = day;
 
-        // Puce visuelle trophée dans le calendrier
+        // Puce visuelle trophée
         if(badgesByDateMap[dateString] && badgesByDateMap[dateString].length > 0) {
           const indicator = document.createElement('div');
           indicator.className = 'cal-badge-indicator';
@@ -1046,7 +1099,6 @@
         }
 
         dayDiv.onclick = () => {
-          playSound('pop');
           let detailsHtml = `<strong>Rappel du ${dateString} :</strong><br>`;
           if (activeDatesMap[dateString]) {
             detailsHtml += activeDatesMap[dateString].join('<br>');
@@ -1054,7 +1106,6 @@
             detailsHtml += 'Aucune activité enregistrée.';
           }
 
-          // Mention spécifique des trophées débloqués le jour sélectionné
           if (badgesByDateMap[dateString] && badgesByDateMap[dateString].length > 0) {
             detailsHtml += `<span class="trophy-mention"><br>🏆 Trophée(s) obtenu(s) :<br>`;
             detailsHtml += badgesByDateMap[dateString].map(b => `• ${b.icon} ${b.title}`).join('<br>');
@@ -1073,21 +1124,25 @@
     }
 
     function exportToCSV() {
-      playSound('pop');
       const plankHistory = JSON.parse(localStorage.getItem('planksHistory')) || [];
       const pushupHistory = JSON.parse(localStorage.getItem('pushupHistory')) || [];
-      let csvContent = "data:text/csv;charset=utf-8,Date,Activite,Variante,Valeur\n";
+      const routeHistory = JSON.parse(localStorage.getItem('routeHistoryV18')) || [];
+      
+      let csvContent = "data:text/csv;charset=utf-8,Date,Activite,Variante_ou_Detail,Valeur\n";
       plankHistory.forEach(h => { csvContent += `${h.date},Planks,${h.variant || 'Standard'},${h.seconds}s\n`; });
       pushupHistory.forEach(h => { csvContent += `${h.date},Push-pull,${h.variant || 'Standard'},${h.count}\n`; });
+      routeHistory.forEach(h => { csvContent += `${h.date},FeuilleDeRoute,Jour_${h.day},"${h.summary}"\n`; });
+      
       const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent));
       link.setAttribute("download", "core_push_export.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
     }
 
     function triggerBackup() {
-      playSound('pop');
       const plankHistory = JSON.parse(localStorage.getItem('planksHistory')) || [];
       const pushupHistory = JSON.parse(localStorage.getItem('pushupHistory')) || [];
-      navigator.clipboard.writeText(JSON.stringify({ plankHistory, pushupHistory })).then(() => alert("Code copié dans le presse-papier !"));
+      const routeHistory = JSON.parse(localStorage.getItem('routeHistoryV18')) || [];
+      
+      navigator.clipboard.writeText(JSON.stringify({ plankHistory, pushupHistory, routeHistory })).then(() => alert("Code de secours copié !"));
     }
 
     // Init All on Load

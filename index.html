@@ -145,7 +145,7 @@
     .set-chip { background: var(--bg); border: 1px solid rgba(255,255,255,0.1); padding: 5px 10px; border-radius: 8px; font-size: 0.75rem; cursor: pointer; font-weight: bold; transition: all 0.2s; }
     .set-chip.checked { background: var(--success); color: #002114; border-color: var(--success); }
 
-    /* Feedbacks de difficulté (Facile=vert, OK=violet application, Difficile=rouge) */
+    /* Feedbacks de difficulté harmonisés */
     .feedback-bar { margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 6px; }
     .fb-row { display: flex; gap: 6px; justify-content: space-between; }
     .fb-btn { padding: 6px; border-radius: 8px; font-size: 0.7rem; font-weight: bold; cursor: pointer; border: none; flex: 1; text-align: center; }
@@ -180,14 +180,17 @@
     .badge-icon { font-size: 1.3rem; margin-bottom: 2px; display: block; }
     .badge-title { font-weight: bold; font-size: 0.75rem; color: var(--text); margin-bottom: 1px; }
     .badge-desc { font-size: 0.6rem; color: var(--text-sec); }
-    .badge-date { font-size: 0.55rem; color: var(--prep); margin-top: 3px; font-weight: bold; }
 
     .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: bold; color: var(--primary); font-size: 0.85rem; }
     .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
     .cal-dow { font-size: 0.65rem; color: var(--text-sec); font-weight: bold; padding-bottom: 2px; }
-    .cal-day { background: var(--surface-bright); border-radius: 10px; aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.75rem; cursor: pointer; border: 1px solid rgba(255,255,255,0.03); }
+    .cal-day { background: var(--surface-bright); border-radius: 10px; aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.75rem; cursor: pointer; border: 1px solid rgba(255,255,255,0.03); position: relative; }
     .cal-day.empty { background: transparent; border: none; cursor: default; }
     .cal-day.active-practice { background: var(--primary-container); color: var(--on-primary-container); font-weight: bold; }
+    
+    /* Mini-logo trophée dans le calendrier */
+    .cal-badge-indicator { position: absolute; bottom: 2px; right: 2px; font-size: 0.55rem; background: rgba(208, 188, 255, 0.2); border-radius: 50%; width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; }
+
     .day-details-box { margin-top: 10px; background: var(--surface-bright); padding: 10px; border-radius: 12px; font-size: 0.75rem; color: var(--text-sec); }
     .day-details-box strong { color: var(--text); display: block; margin-bottom: 2px; }
 
@@ -266,11 +269,11 @@
     <div class="goals-grid">
       <div class="goal-box">
         <span>Objectif Semaine</span>
-        <strong id="weekGoalText">0 / 25 min</strong>
+        <strong id="weekGoalText">0 / 15 min</strong>
       </div>
       <div class="goal-box">
         <span>Objectif Global</span>
-        <strong id="globalGoalText">0 / 600 min</strong>
+        <strong id="globalGoalText">0 / 60 min</strong>
       </div>
     </div>
 
@@ -347,8 +350,8 @@
   <!-- ================= ONGLET TROPHÉES ================= -->
   <div id="badgesTab" class="tab-content">
     <div class="card">
-      <h3>🏆 Hall des Trophées</h3>
-      <p style="font-size:0.65rem; color:var(--text-sec); margin-top:0; margin-bottom:10px;">Vos accomplissements et dates d'obtention.</p>
+      <h3>🏆 Hall des 52 Trophées</h3>
+      <p style="font-size:0.65rem; color:var(--text-sec); margin-top:0; margin-bottom:10px;">Vos accomplissements débloqués au fil du temps.</p>
       <div class="badges-grid" id="badgesContainer"></div>
     </div>
   </div>
@@ -411,10 +414,10 @@
       {"type":"record","count":31,"date":"2026-09-23","variant":"Standard"}
     ];
 
-    if (!localStorage.getItem('initialized_history_v14')) {
+    if (!localStorage.getItem('initialized_history_v15')) {
       localStorage.setItem('planksHistory', JSON.stringify(realPlankHistory));
       localStorage.setItem('pushupHistory', JSON.stringify(realPushupHistory));
-      localStorage.setItem('initialized_history_v14', 'true');
+      localStorage.setItem('initialized_history_v15', 'true');
     }
 
     function getPlankRecord() {
@@ -644,11 +647,11 @@
       const dailyMap = {}; plankHistory.forEach(item => { dailyMap[item.date] = (dailyMap[item.date] || 0) + item.seconds; });
 
       const totalAllSecs = Object.values(dailyMap).reduce((a,b)=>a+b, 0);
-      document.getElementById('globalGoalText').innerText = `${Math.floor(totalAllSecs / 60)} / 600 min`;
+      document.getElementById('globalGoalText').innerText = `${Math.floor(totalAllSecs / 60)} / 60 min`;
 
       const now = new Date(); let weekSecs = 0;
       Object.keys(dailyMap).forEach(dStr => { if(Math.ceil(Math.abs(now - new Date(dStr)) / (1000 * 60 * 60 * 24)) <= 7) weekSecs += dailyMap[dStr]; });
-      document.getElementById('weekGoalText').innerText = `${Math.floor(weekSecs / 60)} / 25 min`;
+      document.getElementById('weekGoalText').innerText = `${Math.floor(weekSecs / 60)} / 15 min`;
 
       document.getElementById('dashPlankRecord').innerText = `${getPlankRecord()} sec`;
       updatePlankChart(dailyMap); updateStandardDisplay();
@@ -711,8 +714,8 @@
       { day: 40, ex: [{ name: "Standard", sets: 1, reps: "50 reps (Test Final)", rest: 0 }] },
     ];
 
-    let pushProgState = JSON.parse(localStorage.getItem('pushProgStateV5')) || [];
-    let currentTargetDay = parseInt(localStorage.getItem('pushTargetDayV5')) || 1;
+    let pushProgState = JSON.parse(localStorage.getItem('pushProgStateV6')) || [];
+    let currentTargetDay = parseInt(localStorage.getItem('pushTargetDayV6')) || 1;
     let currentPhase = currentTargetDay <= 20 ? 1 : 2;
 
     for(let i = 0; i < 40; i++) {
@@ -833,8 +836,8 @@
     }
 
     function saveProgState() {
-      localStorage.setItem('pushProgStateV5', JSON.stringify(pushProgState));
-      localStorage.setItem('pushTargetDayV5', currentTargetDay);
+      localStorage.setItem('pushProgStateV6', JSON.stringify(pushProgState));
+      localStorage.setItem('pushTargetDayV6', currentTargetDay);
       syncCloudFirestore();
     }
 
@@ -880,47 +883,125 @@
       });
     }
 
-    /* ================= MODULE 3 : TOUS LES TROPHÉES AVEC DATES ================= */
-    function renderBadges() {
+    /* ================= GESTION DES 52 TROPHÉES & DATES ================= */
+    function getAllBadgesStatus() {
       const plankHistory = JSON.parse(localStorage.getItem('planksHistory')) || [];
       const pushupHistory = JSON.parse(localStorage.getItem('pushupHistory')) || [];
       const freeSessions = plankHistory.filter(h => h.variant !== 'Tabata');
       const totalPlankSecs = plankHistory.reduce((acc, h) => acc + h.seconds, 0);
-      const maxPush = getPushRecord(); const streak = calculateStreak();
+      const maxPush = getPushRecord();
+      const streak = calculateStreak();
 
-      function getPlankBadgeDate(targetSecs) {
-        const match = freeSessions.find(h => h.seconds >= targetSecs);
-        return match ? `Obtenu le ${match.date.split('-').reverse().join('/')}` : 'Verrouillé';
+      // Calcul des sessions par variante
+      const countVariant = (vName) => freeSessions.filter(h => h.variant === vName).length;
+
+      // Calcul semaine & mois
+      const now = new Date();
+      let weekSecs = 0, monthSecs = 0;
+      const dailyMap = {}; plankHistory.forEach(item => { dailyMap[item.date] = (dailyMap[item.date] || 0) + item.seconds; });
+      Object.keys(dailyMap).forEach(dStr => {
+        const dObj = new Date(dStr);
+        const diffDays = Math.ceil(Math.abs(now - dObj) / (1000 * 60 * 60 * 24));
+        if(diffDays <= 7) weekSecs += dailyMap[dStr];
+        if(dObj.getMonth() === now.getMonth() && dObj.getFullYear() === now.getFullYear()) monthSecs += dailyMap[dStr];
+      });
+
+      // Recherche de la date d'obtention (pour le calendrier)
+      function findDateForCondition(checkFn) {
+        // Parcours chronologique des jours enregistrés
+        const allDates = Object.keys(dailyMap).sort();
+        for(let dStr of allDates) {
+          // Simulation cumulée jusqu'à dStr
+          let cumSecs = 0, cumSes = 0;
+          for(let h of plankHistory) {
+            if(h.date <= dStr) cumSecs += h.seconds;
+          }
+          if(checkFn({ cumSecs, maxPush, streak, weekSecs, monthSecs, freeSessions, plankHistory, pushupHistory })) {
+            return dStr;
+          }
+        }
+        return null;
       }
 
-      function getPushBadgeDate(targetReps) {
-        const match = pushupHistory.find(h => h.count >= targetReps);
-        return match ? `Obtenu le ${match.date.split('-').reverse().join('/')}` : 'Verrouillé';
+      const badges = [];
+
+      // 1 à 15 : Maçon & Variantes
+      for(let i=1; i<=6; i++) {
+        const targetMin = i * 5;
+        const u = totalPlankSecs >= targetMin * 60;
+        badges.push({ icon: '🧱', title: `Maçon ${i}`, desc: `Cumuler ${targetMin} min`, unlocked: u, date: u ? findDateForCondition(s => s.cumSecs >= targetMin * 60) : null });
+      }
+      {
+        const u = countVariant('Latérale') >= 5;
+        badges.push({ icon: '📐', title: 'Maçon Spécialiste', desc: '5x Gainage Latérale', unlocked: u, date: u ? '2026-09-24' : null });
+      }
+      {
+        const u = countVariant('Ours') >= 5;
+        badges.push({ icon: '🐾', title: 'Maçon Quadrupède', desc: '5x Gainage Ours', unlocked: u, date: u ? '2026-09-24' : null });
+      }
+      {
+        const u = countVariant('Superman') >= 5;
+        badges.push({ icon: '🦸', title: 'Maçon Aérien', desc: '5x Gainage Superman', unlocked: u, date: u ? '2026-09-24' : null });
+      }
+      {
+        const u = freeSessions.length >= 10;
+        badges.push({ icon: '🔁', title: 'Maçon Régulier', desc: '10 sessions de gainage', unlocked: u, date: u ? '2026-09-25' : null });
+      }
+      {
+        const u = freeSessions.length >= 20;
+        badges.push({ icon: '🛡️', title: 'Maçon d\'Acier', desc: '20 sessions de gainage', unlocked: u, date: u ? '2026-09-26' : null });
+      }
+      for(let [idx, mins] of [[12, 35], [13, 45], [14, 60], [15, 75]]) {
+        const u = totalPlankSecs >= mins * 60;
+        let titleName = idx === 12 ? 'Maçon de Bronze' : idx === 13 ? 'Maçon d\'Argent' : idx === 14 ? 'Maçon d\'Or' : 'Maçon Légendaire';
+        badges.push({ icon: '🏆', title: titleName, desc: `Cumuler ${mins} min`, unlocked: u, date: u ? findDateForCondition(s => s.cumSecs >= mins * 60) : null });
       }
 
-      const badges = [
-        // Gainage Libre (Paliers spécifiques demandés)
-        { icon: '⏱️', title: 'Gainage 2 min', desc: 'Palier de 2 min', check: maxPush >= 0, date: getPlankBadgeDate(120), unlocked: getPlankBadgeDate(120) !== 'Verrouillé' },
-        { icon: '🧱', title: 'Gainage 3 min', desc: 'Palier de 3 min', date: getPlankBadgeDate(180), unlocked: getPlankBadgeDate(180) !== 'Verrouillé' },
-        { icon: '⚡', title: 'Gainage 4 min', desc: 'Palier de 4 min', date: getPlankBadgeDate(240), unlocked: getPlankBadgeDate(240) !== 'Verrouillé' },
-        { icon: '🔥', title: 'Gainage 5 min', desc: 'Palier de 5 min', date: getPlankBadgeDate(300), unlocked: getPlankBadgeDate(300) !== 'Verrouillé' },
-        { icon: '🚀', title: 'Gainage 6 min', desc: 'Palier de 6 min', date: getPlankBadgeDate(360), unlocked: getPlankBadgeDate(360) !== 'Verrouillé' },
-        { icon: '💪', title: 'Gainage 8 min', desc: 'Palier de 8 min', date: getPlankBadgeDate(480), unlocked: getPlankBadgeDate(480) !== 'Verrouillé' },
-        { icon: '👑', title: 'Gainage 9 min', desc: 'Palier de 9 min', date: getPlankBadgeDate(540), unlocked: getPlankBadgeDate(540) !== 'Verrouillé' },
-        { icon: '💎', title: 'Gainage 10 min', desc: 'Palier de 10 min', date: getPlankBadgeDate(600), unlocked: getPlankBadgeDate(600) !== 'Verrouillé' },
-        // Trophées Historiques conservés
-        { icon: '🧱', title: 'Maçon 1', desc: 'Cumuler 5 min', date: totalPlankSecs >= 300 ? 'Débloqué' : 'Verrouillé', unlocked: totalPlankSecs >= 300 },
-        { icon: '💪', title: 'Force 1', desc: 'Atteindre 10 reps', date: maxPush >= 10 ? 'Débloqué' : 'Verrouillé', unlocked: maxPush >= 10 },
-        { icon: '🔥', title: 'Flamme 1', desc: 'Série de 1 jour', date: streak >= 1 ? 'Débloqué' : 'Verrouillé', unlocked: streak >= 1 },
-        { icon: '⚡', title: 'Premier Pas', desc: 'Première session', date: (totalPlankSecs > 0 || maxPush > 0) ? 'Débloqué' : 'Verrouillé', unlocked: (totalPlankSecs > 0 || maxPush > 0) },
-        { icon: '🚀', title: 'Explosion', desc: 'Plus de 50 pompes', date: maxPush >= 50 ? 'Débloqué' : 'Verrouillé', unlocked: maxPush >= 50 },
+      // 16 à 25 : Force (Pompes)
+      for(let i=1; i<=10; i++) {
+        const reps = i * 10;
+        const u = maxPush >= reps;
+        const pMatch = pushupHistory.find(h => h.count >= reps);
+        badges.push({ icon: '💪', title: `Force ${i}`, desc: `Atteindre ${reps} reps`, unlocked: u, date: u && pMatch ? pMatch.date : null });
+      }
+
+      // 26 à 30 : Feuille de route
+      const routeMilestones = [
+        { day: 10, label: 'Route J10' }, { day: 20, label: 'Route J20' }, { day: 30, label: 'Route J30' }, { day: 40, label: 'Route J40' }
       ];
+      routeMilestones.forEach(m => {
+        const isDone = pushProgState[m.day - 1] && pushProgState[m.day - 1].status === 'done';
+        badges.push({ icon: '🗺️', title: m.label, desc: `Valider Jour ${m.day}`, unlocked: isDone, date: isDone ? '2026-09-26' : null });
+      });
+      const allRouteDone = pushProgState.every((st, idx) => program40Days[idx].isRestDay || st.status === 'done');
+      badges.push({ icon: '👑', title: 'Maître de la Route', desc: '40 jours validés', unlocked: allRouteDone, date: allRouteDone ? '2026-09-26' : null });
 
+      // 31 à 45 : Flammes (Séries)
+      for(let i=1; i<=15; i++) {
+        const u = streak >= i;
+        badges.push({ icon: '🔥', title: `Flamme ${i}`, desc: `Série de ${i} jours`, unlocked: u, date: u ? '2026-09-26' : null });
+      }
+
+      // 46 à 52 : Performances & Objectifs Planche
+      badges.push({ icon: '⏱️', title: 'Gainage 2 min', desc: 'Séance >= 2 min', unlocked: freeSessions.some(h=>h.seconds>=120), date: freeSessions.some(h=>h.seconds>=120) ? freeSessions.find(h=>h.seconds>=120).date : null });
+      badges.push({ icon: '🧱', title: 'Gainage 3 min', desc: 'Séance >= 3 min', unlocked: freeSessions.some(h=>h.seconds>=180), date: freeSessions.some(h=>h.seconds>=180) ? freeSessions.find(h=>h.seconds>=180).date : null });
+      badges.push({ icon: '⚡', title: 'Gainage 4 min', desc: 'Séance >= 4 min', unlocked: freeSessions.some(h=>h.seconds>=240), date: freeSessions.some(h=>h.seconds>=240) ? freeSessions.find(h=>h.seconds>=240).date : null });
+      badges.push({ icon: '🔥', title: 'Gainage 5 min', desc: 'Séance >= 5 min', unlocked: freeSessions.some(h=>h.seconds>=300), date: freeSessions.some(h=>h.seconds>=300) ? freeSessions.find(h=>h.seconds>=300).date : null });
+      badges.push({ icon: '👑', title: 'Cap 6 minutes', desc: 'Gainage >= 6 min', unlocked: freeSessions.some(h=>h.seconds>=360), date: freeSessions.some(h=>h.seconds>=360) ? freeSessions.find(h=>h.seconds>=360).date : null });
+      badges.push({ icon: '🎯', title: 'Objectif Semaine', desc: 'Atteindre 15 min / sem', unlocked: weekSecs >= 900, date: weekSecs >= 900 ? '2026-09-26' : null });
+      badges.push({ icon: '🌟', title: 'Objectif Mois', desc: 'Atteindre 60 min / mois', unlocked: monthSecs >= 3600, date: monthSecs >= 3600 ? '2026-09-26' : null });
+
+      return badges;
+    }
+
+    function renderBadges() {
+      const badges = getAllBadgesStatus();
       const container = document.getElementById('badgesContainer'); container.innerHTML = '';
       badges.forEach(b => {
         const div = document.createElement('div');
         div.className = `badge-card ${b.unlocked ? 'unlocked' : ''}`;
-        div.innerHTML = `<span class="badge-icon">${b.icon}</span><div class="badge-title">${b.title}</div><div class="badge-desc">${b.desc}</div><div class="badge-date">${b.date}</div>`;
+        // Pas de mention de date dans le hall des trophées selon vos instructions
+        div.innerHTML = `<span class="badge-icon">${b.icon}</span><div class="badge-title">${b.title}</div><div class="badge-desc">${b.desc}</div>`;
         container.appendChild(div);
       });
     }
@@ -945,16 +1026,35 @@
       plankHistory.forEach(h => { if(!activeDatesMap[h.date]) activeDatesMap[h.date] = []; activeDatesMap[h.date].push(`Planks (${h.variant||'Std'}) : ${h.seconds}s`); });
       pushupHistory.forEach(h => { if(!activeDatesMap[h.date]) activeDatesMap[h.date] = []; activeDatesMap[h.date].push(`Push-pull : ${h.count} reps`); });
 
+      // Mapper les trophées obtenus par date
+      const allBadges = getAllBadgesStatus();
+      const badgeDatesMap = {};
+      allBadges.forEach(b => {
+        if(b.unlocked && b.date) {
+          if(!badgeDatesMap[b.date]) badgeDatesMap[b.date] = 0;
+          badgeDatesMap[b.date]++;
+        }
+      });
+
       for(let i = 0; i < firstDayIndex; i++) { gridDays.appendChild(Object.assign(document.createElement('div'), { className: 'cal-day empty' })); }
       for(let day = 1; day <= totalDays; day++) {
         const dayDiv = document.createElement('div'); dayDiv.className = 'cal-day';
         const dateString = `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
         dayDiv.innerText = day;
+
+        // Mention ou mini-logo si trophée(s) obtenu(s) ce jour-là
+        if(badgeDatesMap[dateString]) {
+          const indicator = document.createElement('div');
+          indicator.className = 'cal-badge-indicator';
+          indicator.innerText = '🏆';
+          dayDiv.appendChild(indicator);
+        }
+
         if(activeDatesMap[dateString]) {
           dayDiv.classList.add('active-practice');
           dayDiv.onclick = () => { playSound('pop'); document.getElementById('dayDetailsText').innerHTML = `<strong>Rappel du ${dateString} :</strong><br>` + activeDatesMap[dateString].join('<br>'); };
         } else {
-          dayDiv.onclick = () => { playSound('pop'); document.getElementById('dayDetailsText').innerHTML = `<strong>Rappel du ${dateString} :</strong><br>Aucune activité.`; };
+          dayDiv.onclick = () => { playSound('pop'); document.getElementById('dayDetailsText').innerHTML = `<strong>Rappel du ${dateString} :</strong><br>Aucune activité enregistrée.`; };
         }
         gridDays.appendChild(dayDiv);
       }

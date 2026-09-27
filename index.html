@@ -398,14 +398,14 @@
 
 
   <script>
-    /* ================= INITIALISATION & HISTORIQUE ================= */
+    /* ================= INITIALISATION & HISTORIQUE DÉFINITIF ================= */
     const realPlankHistory = [
-      {"date":"2026-09-15","seconds":141,"variant":"Standard"},
-      {"date":"2026-09-22","seconds":100,"variant":"Standard"},
-      {"date":"2026-09-23","seconds":160,"variant":"Standard"},
-      {"date":"2026-09-24","seconds":160,"variant":"Standard"},
-      {"date":"2026-09-25","seconds":160,"variant":"Standard"},
-      {"date":"2026-09-26","seconds":120,"variant":"Standard"}
+      {"date":"2026-09-15","seconds":141,"variant":"Standard","type":"free"},
+      {"date":"2026-09-22","seconds":100,"variant":"Standard","type":"free"},
+      {"date":"2026-09-23","seconds":160,"variant":"Standard","type":"free"},
+      {"date":"2026-09-24","seconds":160,"variant":"Standard","type":"free"},
+      {"date":"2026-09-25","seconds":160,"variant":"Standard","type":"free"},
+      {"date":"2026-09-26","seconds":160,"variant":"Tabata","type":"tabata","work":20,"rest":10,"cycles":8}
     ];
 
     const realPushupHistory = [
@@ -413,15 +413,22 @@
       {"type":"record","count":31,"date":"2026-09-23","variant":"Standard"}
     ];
 
-    if (!localStorage.getItem('initialized_history_v20')) {
+    const realRouteHistory = [
+      {"date":"2026-09-24","day":1,"summary":"Jour 1 : 5x12 (Standard)"},
+      {"date":"2026-09-25","day":2,"summary":"Jour 2 : 3x12 (inclinées) + 2x8 (Diamond)"},
+      {"date":"2026-09-26","day":4,"summary":"Jour 4 : 5x14 (Standard)"}
+    ];
+
+    if (!localStorage.getItem('initialized_history_v25')) {
       localStorage.setItem('planksHistory', JSON.stringify(realPlankHistory));
       localStorage.setItem('pushupHistory', JSON.stringify(realPushupHistory));
-      localStorage.setItem('initialized_history_v20', 'true');
+      localStorage.setItem('routeHistoryV25', JSON.stringify(realRouteHistory));
+      localStorage.setItem('initialized_history_v25', 'true');
     }
 
     function getPlankRecord() {
       const hist = JSON.parse(localStorage.getItem('planksHistory')) || [];
-      const freeSessions = hist.filter(h => h.variant !== 'Tabata');
+      const freeSessions = hist.filter(h => h.variant !== 'Tabata' && h.type !== 'tabata');
       const maxHist = freeSessions.length > 0 ? Math.max(...freeSessions.map(h => h.seconds)) : 120;
       return Math.max(120, maxHist);
     }
@@ -454,7 +461,7 @@
           date: firebase.firestore.FieldValue.serverTimestamp(),
           planks: JSON.parse(localStorage.getItem('planksHistory')) || [],
           pushups: JSON.parse(localStorage.getItem('pushupHistory')) || [],
-          routeProgress: JSON.parse(localStorage.getItem('routeHistoryV20')) || [],
+          routeProgress: JSON.parse(localStorage.getItem('routeHistoryV25')) || [],
           source: "Web App"
         }, { merge: true });
         btn.innerHTML = "☁️ OK"; setTimeout(() => btn.innerHTML = "☁️ Cloud", 3000);
@@ -463,12 +470,12 @@
       }
     }
 
-    /* ================= AUDIO & FX (SANS CLICS TACTILES) ================= */
+    /* ================= AUDIO & FX (AUCUN SON PAR CLIC TACTILE) ================= */
     let audioCtx = null;
     function getAudioContext() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); return audioCtx; }
     
     function playSound(type) {
-      if (type === 'pop') return; // Clés tactiles désactivées
+      if (type === 'pop') return; // Bip tactile totalement désactivé
       try {
         const ctx = getAudioContext(); if (ctx.state === 'suspended') ctx.resume();
         const now = ctx.currentTime; const osc = ctx.createOscillator(); const gain = ctx.createGain();
@@ -512,7 +519,7 @@
     function calculateStreak() {
       const plankHist = JSON.parse(localStorage.getItem('planksHistory')) || [];
       const pushHist = JSON.parse(localStorage.getItem('pushupHistory')) || [];
-      const routeHist = JSON.parse(localStorage.getItem('routeHistoryV20')) || [];
+      const routeHist = JSON.parse(localStorage.getItem('routeHistoryV25')) || [];
       const dates = new Set([...plankHist.map(h => h.date), ...pushHist.map(h => h.date), ...routeHist.map(h => h.date)]);
       let streak = 0, d = new Date();
       while (true) {
@@ -722,8 +729,8 @@
       { day: 40, ex: [{ name: "Standard", sets: 1, reps: "50 reps (Test Final)", rest: 0 }] },
     ];
 
-    let pushProgState = JSON.parse(localStorage.getItem('pushProgStateV20')) || [];
-    let currentTargetDay = parseInt(localStorage.getItem('pushTargetDayV20')) || 1;
+    let pushProgState = JSON.parse(localStorage.getItem('pushProgStateV25')) || [];
+    let currentTargetDay = parseInt(localStorage.getItem('pushTargetDayV25')) || 1;
     let currentPhase = currentTargetDay <= 20 ? 1 : 2;
 
     for(let i = 0; i < 40; i++) {
@@ -788,7 +795,7 @@
       setTimeout(() => { const activeEl = document.querySelector('.active-day'); if(activeEl) activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 100);
     }
 
-    /* REPOS VOCAL : "Fin du repos dans 5, 4, 3, 2, 1, Go !" */
+    /* DECOMPTE REPOS VOCAL SPECIFIQUE : "Fin du repos dans 5, 4, 3, 2, 1, Go !" */
     let restInterval; let restSecondsLeft = 0;
     function startRestTimer(secs) {
       if(secs <= 0) return;
@@ -800,7 +807,9 @@
       restInterval = setInterval(() => {
           restSecondsLeft--;
           
-          if (restSecondsLeft === 5) speak("Fin du repos dans 5, 4, 3, 2, 1, Go");
+          if (restSecondsLeft === 5) {
+            speak("Fin du repos dans 5, 4, 3, 2, 1, Go");
+          }
           
           if(restSecondsLeft <= 0) {
             endRestTimer(false); triggerVibration([500, 200, 500]); playSound('success');
@@ -836,7 +845,7 @@
     }
 
     function logRouteDayCompletion(dayNum) {
-      const routeHistory = JSON.parse(localStorage.getItem('routeHistoryV20')) || [];
+      const routeHistory = JSON.parse(localStorage.getItem('routeHistoryV25')) || [];
       const todayStr = new Date().toISOString().split('T')[0];
       const dayData = program40Days[dayNum - 1];
       
@@ -846,7 +855,7 @@
       }
       
       routeHistory.push({ date: todayStr, day: dayNum, summary: summary });
-      localStorage.setItem('routeHistoryV20', JSON.stringify(routeHistory));
+      localStorage.setItem('routeHistoryV25', JSON.stringify(routeHistory));
     }
 
     function toggleRestDay(dayIdx) {
@@ -868,8 +877,8 @@
     }
 
     function saveProgState() {
-      localStorage.setItem('pushProgStateV20', JSON.stringify(pushProgState));
-      localStorage.setItem('pushTargetDayV20', currentTargetDay);
+      localStorage.setItem('pushProgStateV25', JSON.stringify(pushProgState));
+      localStorage.setItem('pushTargetDayV25', currentTargetDay);
       syncCloudFirestore();
     }
 
@@ -919,7 +928,7 @@
     function getAllBadgesStatus() {
       const plankHistory = JSON.parse(localStorage.getItem('planksHistory')) || [];
       const pushupHistory = JSON.parse(localStorage.getItem('pushupHistory')) || [];
-      const freeSessions = plankHistory.filter(h => h.variant !== 'Tabata');
+      const freeSessions = plankHistory.filter(h => h.variant !== 'Tabata' && h.type !== 'tabata');
       const totalPlankSecs = plankHistory.reduce((acc, h) => acc + h.seconds, 0);
       const maxPush = getPushRecord();
       const streak = calculateStreak();
@@ -1047,7 +1056,7 @@
 
       const plankHistory = JSON.parse(localStorage.getItem('planksHistory')) || [];
       const pushupHistory = JSON.parse(localStorage.getItem('pushupHistory')) || [];
-      const routeHistory = JSON.parse(localStorage.getItem('routeHistoryV20')) || [];
+      const routeHistory = JSON.parse(localStorage.getItem('routeHistoryV25')) || [];
       
       const activeDatesMap = {};
       
@@ -1064,7 +1073,7 @@
       // Pompes Libres
       pushupHistory.forEach(h => {
         if(!activeDatesMap[h.date]) activeDatesMap[h.date] = [];
-        activeDatesMap[h.date].push(`💪 Pompes : ${h.count} reps (${h.variant||'Standard'})`);
+        activeDatesMap[h.date].push(`💪 Pompes Libres : ${h.count} reps (${h.variant||'Standard'})`);
       });
 
       // Feuille de route Push-pull
@@ -1125,7 +1134,7 @@
     function exportToCSV() {
       const plankHistory = JSON.parse(localStorage.getItem('planksHistory')) || [];
       const pushupHistory = JSON.parse(localStorage.getItem('pushupHistory')) || [];
-      const routeHistory = JSON.parse(localStorage.getItem('routeHistoryV20')) || [];
+      const routeHistory = JSON.parse(localStorage.getItem('routeHistoryV25')) || [];
       
       let csvContent = "data:text/csv;charset=utf-8,Date,Activite,Variante_ou_Detail,Valeur\n";
       plankHistory.forEach(h => { csvContent += `${h.date},Planks,${h.variant || 'Standard'},${h.seconds}s\n`; });
@@ -1139,7 +1148,7 @@
     function triggerBackup() {
       const plankHistory = JSON.parse(localStorage.getItem('planksHistory')) || [];
       const pushupHistory = JSON.parse(localStorage.getItem('pushupHistory')) || [];
-      const routeHistory = JSON.parse(localStorage.getItem('routeHistoryV20')) || [];
+      const routeHistory = JSON.parse(localStorage.getItem('routeHistoryV25')) || [];
       
       navigator.clipboard.writeText(JSON.stringify({ plankHistory, pushupHistory, routeHistory })).then(() => alert("Code de secours copié !"));
     }

@@ -202,7 +202,6 @@
 
   <div id="fxOverlay"></div>
   
-  <!-- Bandeau Chrono Repos Flottant -->
   <div id="restTimerBanner" class="rest-banner">
      <span>⏱️ Repos : <strong id="restTimerDisplay">00:00</strong></span>
      <button onclick="endRestTimer(true)">Passer</button>
@@ -224,9 +223,7 @@
     <button class="tab-btn" onclick="switchTab('dashboard')">Data</button>
   </div>
 
-  <!-- ================= ONGLET PLANKS ================= -->
   <div id="plankTab" class="tab-content active">
-    
     <div class="card" id="timerCard">
       <div>
         <div class="variants-scroll" id="plankVariantsScroll">
@@ -285,9 +282,7 @@
   </div>
 
 
-  <!-- ================= ONGLET PUSH-PULL ================= -->
   <div id="pushupTab" class="tab-content">
-    
     <div class="card">
       <div class="variants-scroll" id="pushVariantsScroll">
         <button class="variant-chip active" onclick="selectPushVariant('Standard', this)">Standard</button>
@@ -346,7 +341,6 @@
   </div>
 
 
-  <!-- ================= ONGLET TROPHÉES ================= -->
   <div id="badgesTab" class="tab-content">
     <div class="card">
       <h3>🏆 Hall des 52 Trophées</h3>
@@ -356,9 +350,7 @@
   </div>
 
 
-  <!-- ================= ONGLET DATA ================= -->
   <div id="dashboardTab" class="tab-content">
-    
     <div class="card">
       <h3>🏆 Records Absolus</h3>
       <div style="font-size: 0.8rem; margin-bottom: 10px;">
@@ -398,34 +390,8 @@
 
 
   <script>
-    /* ================= INITIALISATION & HISTORIQUE DÉFINITIF ================= */
-    const realPlankHistory = [
-      {"date":"2026-09-15","seconds":141,"variant":"Standard","type":"free"},
-      {"date":"2026-09-22","seconds":100,"variant":"Standard","type":"free"},
-      {"date":"2026-09-23","seconds":160,"variant":"Standard","type":"free"},
-      {"date":"2026-09-24","seconds":160,"variant":"Standard","type":"free"},
-      {"date":"2026-09-25","seconds":160,"variant":"Standard","type":"free"},
-      {"date":"2026-09-26","seconds":160,"variant":"Tabata","type":"tabata","work":20,"rest":10,"cycles":8}
-    ];
-
-    const realPushupHistory = [
-      {"type":"record","date":"2026-09-22","count":30,"variant":"Standard"},
-      {"type":"record","count":31,"date":"2026-09-23","variant":"Standard"}
-    ];
-
-    const realRouteHistory = [
-      {"date":"2026-09-24","day":1,"summary":"Jour 1 : 5x12 (Standard)"},
-      {"date":"2026-09-25","day":2,"summary":"Jour 2 : 3x12 (inclinées) + 2x8 (Diamond)"},
-      {"date":"2026-09-26","day":4,"summary":"Jour 4 : 5x14 (Standard)"}
-    ];
-
-    if (!localStorage.getItem('initialized_history_v25')) {
-      localStorage.setItem('planksHistory', JSON.stringify(realPlankHistory));
-      localStorage.setItem('pushupHistory', JSON.stringify(realPushupHistory));
-      localStorage.setItem('routeHistoryV25', JSON.stringify(realRouteHistory));
-      localStorage.setItem('initialized_history_v25', 'true');
-    }
-
+    /* ================= INITIALISATION ================= */
+    // Les clés redeviennent vos clés d'origine pour NE PAS effacer votre historique réel
     function getPlankRecord() {
       const hist = JSON.parse(localStorage.getItem('planksHistory')) || [];
       const freeSessions = hist.filter(h => h.variant !== 'Tabata' && h.type !== 'tabata');
@@ -461,7 +427,7 @@
           date: firebase.firestore.FieldValue.serverTimestamp(),
           planks: JSON.parse(localStorage.getItem('planksHistory')) || [],
           pushups: JSON.parse(localStorage.getItem('pushupHistory')) || [],
-          routeProgress: JSON.parse(localStorage.getItem('routeHistoryV25')) || [],
+          routeProgress: JSON.parse(localStorage.getItem('routeHistory')) || [],
           source: "Web App"
         }, { merge: true });
         btn.innerHTML = "☁️ OK"; setTimeout(() => btn.innerHTML = "☁️ Cloud", 3000);
@@ -470,12 +436,14 @@
       }
     }
 
-    /* ================= AUDIO & FX (AUCUN SON PAR CLIC TACTILE) ================= */
+    /* ================= AUDIO & FX ================= */
     let audioCtx = null;
     function getAudioContext() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); return audioCtx; }
     
     function playSound(type) {
-      if (type === 'pop') return; // Bip tactile totalement désactivé
+      // Bloque formellement tous les sons non désirés (retire les bips tactiles)
+      if (type !== 'success' && type !== 'record' && type !== 'tabata') return; 
+      
       try {
         const ctx = getAudioContext(); if (ctx.state === 'suspended') ctx.resume();
         const now = ctx.currentTime; const osc = ctx.createOscillator(); const gain = ctx.createGain();
@@ -519,7 +487,7 @@
     function calculateStreak() {
       const plankHist = JSON.parse(localStorage.getItem('planksHistory')) || [];
       const pushHist = JSON.parse(localStorage.getItem('pushupHistory')) || [];
-      const routeHist = JSON.parse(localStorage.getItem('routeHistoryV25')) || [];
+      const routeHist = JSON.parse(localStorage.getItem('routeHistory')) || [];
       const dates = new Set([...plankHist.map(h => h.date), ...pushHist.map(h => h.date), ...routeHist.map(h => h.date)]);
       let streak = 0, d = new Date();
       while (true) {
@@ -552,7 +520,7 @@
       btn.classList.add('active'); document.getElementById('pushVariantDesc').innerText = pushDescriptions[variant];
     }
 
-    /* ================= MODULE 1 : PLANKS ================= */
+    /* ================= MODULE 1 : PLANKS & TABATA ================= */
     let interval = null; 
     let standardSecs = 0; let isStandardRunning = false; let isTabataRunning = false;
     let tabataPhase = 'prep'; let tabataCycle = 1; let tabataTimeLeft = 15;
@@ -625,10 +593,24 @@
 
       interval = setInterval(() => {
         tabataTimeLeft--;
+        
+        // CORRECTION VOCALE : L'alerte ne se déclenche que sur la toute fin du repos !
+        if (tabataPhase === 'rest' && tabataTimeLeft === 5) {
+            speak("Fin du repos dans 5, 4, 3, 2, 1, Go");
+        }
+
         if (tabataTimeLeft < 0) {
-          if (tabataPhase === 'prep') { tabataPhase = 'work'; tabataTimeLeft = workDur; triggerVibration([500]); speak("Effort"); }
-          else if (tabataPhase === 'work') { tabataPhase = 'rest'; tabataTimeLeft = restDur; triggerVibration([150, 100, 150]); speak("Repos"); }
-          else { tabataCycle++; if (tabataCycle > 8) { endTabata(workDur, restDur); return; } tabataPhase = 'work'; tabataTimeLeft = workDur; triggerVibration([500]); speak("Effort"); }
+          if (tabataPhase === 'prep') { 
+            tabataPhase = 'work'; tabataTimeLeft = workDur; triggerVibration([500]); speak("Effort"); 
+          }
+          else if (tabataPhase === 'work') { 
+            tabataPhase = 'rest'; tabataTimeLeft = restDur; triggerVibration([150, 100, 150]); 
+            // AUCUN SON VOCAL AU DEBUT DU REPOS
+          }
+          else { 
+            tabataCycle++; if (tabataCycle > 8) { endTabata(workDur, restDur); return; } 
+            tabataPhase = 'work'; tabataTimeLeft = workDur; triggerVibration([500]); 
+          }
         }
         updateTabataDisplay();
       }, 1000);
@@ -685,7 +667,7 @@
       });
     }
 
-    /* ================= MODULE 2 : PUSH-PULL ================= */
+    /* ================= MODULE 2 : PUSH-PULL & REPOS ================= */
     const program40Days = [
       { day: 1, ex: [{ name: "Standard", sets: 5, reps: "12", rest: 75 }] },
       { day: 2, ex: [{ name: "inclinées", sets: 3, reps: "12", rest: 60 }, { name: "Diamond", sets: 2, reps: "8", rest: 75 }] },
@@ -729,8 +711,8 @@
       { day: 40, ex: [{ name: "Standard", sets: 1, reps: "50 reps (Test Final)", rest: 0 }] },
     ];
 
-    let pushProgState = JSON.parse(localStorage.getItem('pushProgStateV25')) || [];
-    let currentTargetDay = parseInt(localStorage.getItem('pushTargetDayV25')) || 1;
+    let pushProgState = JSON.parse(localStorage.getItem('pushProgState')) || [];
+    let currentTargetDay = parseInt(localStorage.getItem('pushTargetDay')) || 1;
     let currentPhase = currentTargetDay <= 20 ? 1 : 2;
 
     for(let i = 0; i < 40; i++) {
@@ -802,7 +784,9 @@
       restSecondsLeft = secs;
       const banner = document.getElementById('restTimerBanner');
       const display = document.getElementById('restTimerDisplay');
-      banner.classList.add('visible'); display.innerText = `${Math.floor(secs/60).toString().padStart(2,'0')}:${(secs%60).toString().padStart(2,'0')}`;
+      banner.classList.add('visible'); 
+      display.innerText = `${Math.floor(secs/60).toString().padStart(2,'0')}:${(secs%60).toString().padStart(2,'0')}`;
+      
       clearInterval(restInterval);
       restInterval = setInterval(() => {
           restSecondsLeft--;
@@ -844,18 +828,21 @@
       saveProgState(); renderPushProgram();
     }
 
+    // Sauvegarde détaillée de la feuille de route
     function logRouteDayCompletion(dayNum) {
-      const routeHistory = JSON.parse(localStorage.getItem('routeHistoryV25')) || [];
+      const routeHistory = JSON.parse(localStorage.getItem('routeHistory')) || [];
       const todayStr = new Date().toISOString().split('T')[0];
       const dayData = program40Days[dayNum - 1];
       
       let summary = `Jour ${dayNum} de la feuille de route validé !`;
       if (dayData && dayData.ex) {
         summary = `Jour ${dayNum} : ` + dayData.ex.map(e => `${e.sets}x${e.reps} (${e.name})`).join(' + ');
+      } else if (dayData && dayData.isRestDay) {
+        summary = `Jour ${dayNum} : Repos validé`;
       }
       
       routeHistory.push({ date: todayStr, day: dayNum, summary: summary });
-      localStorage.setItem('routeHistoryV25', JSON.stringify(routeHistory));
+      localStorage.setItem('routeHistory', JSON.stringify(routeHistory));
     }
 
     function toggleRestDay(dayIdx) {
@@ -877,8 +864,8 @@
     }
 
     function saveProgState() {
-      localStorage.setItem('pushProgStateV25', JSON.stringify(pushProgState));
-      localStorage.setItem('pushTargetDayV25', currentTargetDay);
+      localStorage.setItem('pushProgState', JSON.stringify(pushProgState));
+      localStorage.setItem('pushTargetDay', currentTargetDay);
       syncCloudFirestore();
     }
 
@@ -961,7 +948,6 @@
 
       const badges = [];
 
-      // 1 à 15 : Maçon & Variantes
       for(let i=1; i<=6; i++) {
         const targetMin = i * 5;
         const u = totalPlankSecs >= targetMin * 60;
@@ -993,7 +979,6 @@
         badges.push({ icon: '🏆', title: titleName, desc: `Cumuler ${mins} min`, unlocked: u, date: u ? findDateForCondition(s => s.cumSecs >= mins * 60) : null });
       }
 
-      // 16 à 25 : Force (Pompes)
       for(let i=1; i<=10; i++) {
         const reps = i * 10;
         const u = maxPush >= reps;
@@ -1001,7 +986,6 @@
         badges.push({ icon: '💪', title: `Force ${i}`, desc: `Atteindre ${reps} reps`, unlocked: u, date: u && pMatch ? pMatch.date : null });
       }
 
-      // 26 à 30 : Feuille de route
       const routeMilestones = [
         { day: 10, label: 'Route J10' }, { day: 20, label: 'Route J20' }, { day: 30, label: 'Route J30' }, { day: 40, label: 'Route J40' }
       ];
@@ -1012,13 +996,11 @@
       const allRouteDone = pushProgState.every((st, idx) => program40Days[idx].isRestDay || st.status === 'done');
       badges.push({ icon: '👑', title: 'Maître de la Route', desc: '40 jours validés', unlocked: allRouteDone, date: allRouteDone ? '2026-09-26' : null });
 
-      // 31 à 45 : Flammes (Séries)
       for(let i=1; i<=15; i++) {
         const u = streak >= i;
         badges.push({ icon: '🔥', title: `Flamme ${i}`, desc: `Série de ${i} jours`, unlocked: u, date: u ? '2026-09-26' : null });
       }
 
-      // 46 à 52 : Performances & Objectifs Planche
       badges.push({ icon: '⏱️', title: 'Gainage 2 min', desc: 'Séance >= 2 min', unlocked: freeSessions.some(h=>h.seconds>=120), date: freeSessions.some(h=>h.seconds>=120) ? freeSessions.find(h=>h.seconds>=120).date : null });
       badges.push({ icon: '🧱', title: 'Gainage 3 min', desc: 'Séance >= 3 min', unlocked: freeSessions.some(h=>h.seconds>=180), date: freeSessions.some(h=>h.seconds>=180) ? freeSessions.find(h=>h.seconds>=180).date : null });
       badges.push({ icon: '⚡', title: 'Gainage 4 min', desc: 'Séance >= 4 min', unlocked: freeSessions.some(h=>h.seconds>=240), date: freeSessions.some(h=>h.seconds>=240) ? freeSessions.find(h=>h.seconds>=240).date : null });
@@ -1056,33 +1038,32 @@
 
       const plankHistory = JSON.parse(localStorage.getItem('planksHistory')) || [];
       const pushupHistory = JSON.parse(localStorage.getItem('pushupHistory')) || [];
-      const routeHistory = JSON.parse(localStorage.getItem('routeHistoryV25')) || [];
+      const routeHistory = JSON.parse(localStorage.getItem('routeHistory')) || [];
       
       const activeDatesMap = {};
       
-      // Planks & Tabata
+      // Planks & Tabata formaté proprement
       plankHistory.forEach(h => {
         if(!activeDatesMap[h.date]) activeDatesMap[h.date] = [];
         if (h.type === 'tabata' || h.variant === 'Tabata') {
-          activeDatesMap[h.date].push(`🔥 Tabata : ${h.work||20}s effort / ${h.rest||10}s repos (${h.cycles||8} cycles = ${h.seconds}s)`);
+          activeDatesMap[h.date].push(`🔥 Tabata : ${h.work||20}s effort / ${h.rest||10}s repos (${h.cycles||8} cycles = ${h.seconds}s total)`);
         } else {
           activeDatesMap[h.date].push(`⏱️ Gainage Libre (${h.variant||'Standard'}) : ${h.seconds}s`);
         }
       });
 
-      // Pompes Libres
+      // Pompes formaté proprement
       pushupHistory.forEach(h => {
         if(!activeDatesMap[h.date]) activeDatesMap[h.date] = [];
         activeDatesMap[h.date].push(`💪 Pompes Libres : ${h.count} reps (${h.variant||'Standard'})`);
       });
 
-      // Feuille de route Push-pull
+      // Feuille de route formatée avec rappel de la session
       routeHistory.forEach(h => {
         if(!activeDatesMap[h.date]) activeDatesMap[h.date] = [];
-        activeDatesMap[h.date].push(`🗺️ Feuille de Route : ${h.summary}`);
+        activeDatesMap[h.date].push(`🗺️ Feuille de Route : ${h.summary || 'Validé'}`);
       });
 
-      // Trophées par date
       const allBadges = getAllBadgesStatus();
       const badgesByDateMap = {};
       allBadges.forEach(b => {
@@ -1098,7 +1079,6 @@
         const dateString = `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
         dayDiv.innerText = day;
 
-        // Puce visuelle trophée
         if(badgesByDateMap[dateString] && badgesByDateMap[dateString].length > 0) {
           const indicator = document.createElement('div');
           indicator.className = 'cal-badge-indicator';
@@ -1134,7 +1114,7 @@
     function exportToCSV() {
       const plankHistory = JSON.parse(localStorage.getItem('planksHistory')) || [];
       const pushupHistory = JSON.parse(localStorage.getItem('pushupHistory')) || [];
-      const routeHistory = JSON.parse(localStorage.getItem('routeHistoryV25')) || [];
+      const routeHistory = JSON.parse(localStorage.getItem('routeHistory')) || [];
       
       let csvContent = "data:text/csv;charset=utf-8,Date,Activite,Variante_ou_Detail,Valeur\n";
       plankHistory.forEach(h => { csvContent += `${h.date},Planks,${h.variant || 'Standard'},${h.seconds}s\n`; });
@@ -1148,7 +1128,7 @@
     function triggerBackup() {
       const plankHistory = JSON.parse(localStorage.getItem('planksHistory')) || [];
       const pushupHistory = JSON.parse(localStorage.getItem('pushupHistory')) || [];
-      const routeHistory = JSON.parse(localStorage.getItem('routeHistoryV25')) || [];
+      const routeHistory = JSON.parse(localStorage.getItem('routeHistory')) || [];
       
       navigator.clipboard.writeText(JSON.stringify({ plankHistory, pushupHistory, routeHistory })).then(() => alert("Code de secours copié !"));
     }

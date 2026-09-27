@@ -390,8 +390,36 @@
 
 
   <script>
-    /* ================= INITIALISATION ================= */
-    // Les clés redeviennent vos clés d'origine pour NE PAS effacer votre historique réel
+    /* ================= INITIALISATION FORCEE DES DONNEES (POUR AFFICHAGE DIRECT) ================= */
+    const realPlankHistory = [
+      {"date":"2026-09-15","seconds":141,"variant":"Standard","type":"free"},
+      {"date":"2026-09-22","seconds":100,"variant":"Standard","type":"free"},
+      {"date":"2026-09-23","seconds":160,"variant":"Standard","type":"free"},
+      {"date":"2026-09-24","seconds":160,"variant":"Standard","type":"free"},
+      {"date":"2026-09-25","seconds":160,"variant":"Standard","type":"free"},
+      {"date":"2026-09-26","seconds":160,"variant":"Tabata","type":"tabata","work":20,"rest":10,"cycles":8}
+    ];
+
+    const realPushupHistory = [
+      {"type":"record","date":"2026-09-22","count":30,"variant":"Standard"},
+      {"type":"record","count":31,"date":"2026-09-23","variant":"Standard"}
+    ];
+
+    const realRouteHistory = [
+      {"date":"2026-09-24","day":1,"summary":"Jour 1 : 5x12 (Standard)"},
+      {"date":"2026-09-25","day":2,"summary":"Jour 2 : 3x12 (inclinées) + 2x8 (Diamond)"},
+      {"date":"2026-09-26","day":4,"summary":"Jour 4 : 5x14 (Standard)"}
+    ];
+
+    // Utilisation d'une nouvelle clé d'initialisation pour FORCER l'écriture dans les vraies clés
+    if (!localStorage.getItem('init_v28')) {
+      localStorage.setItem('planksHistory', JSON.stringify(realPlankHistory));
+      localStorage.setItem('pushupHistory', JSON.stringify(realPushupHistory));
+      localStorage.setItem('routeHistory', JSON.stringify(realRouteHistory));
+      localStorage.setItem('init_v28', 'true');
+    }
+
+    // Les fonctions lisent maintenant les VRAIES clés stables
     function getPlankRecord() {
       const hist = JSON.parse(localStorage.getItem('planksHistory')) || [];
       const freeSessions = hist.filter(h => h.variant !== 'Tabata' && h.type !== 'tabata');
@@ -594,7 +622,7 @@
       interval = setInterval(() => {
         tabataTimeLeft--;
         
-        // CORRECTION VOCALE : L'alerte ne se déclenche que sur la toute fin du repos !
+        // CORRECTION VOCALE : Déclenchement exclusif à 5 secondes de la fin du repos
         if (tabataPhase === 'rest' && tabataTimeLeft === 5) {
             speak("Fin du repos dans 5, 4, 3, 2, 1, Go");
         }
@@ -605,11 +633,11 @@
           }
           else if (tabataPhase === 'work') { 
             tabataPhase = 'rest'; tabataTimeLeft = restDur; triggerVibration([150, 100, 150]); 
-            // AUCUN SON VOCAL AU DEBUT DU REPOS
+            // Annonce vocale "Repos" supprimée
           }
           else { 
             tabataCycle++; if (tabataCycle > 8) { endTabata(workDur, restDur); return; } 
-            tabataPhase = 'work'; tabataTimeLeft = workDur; triggerVibration([500]); 
+            tabataPhase = 'work'; tabataTimeLeft = workDur; triggerVibration([500]); speak("Effort"); 
           }
         }
         updateTabataDisplay();
@@ -828,7 +856,6 @@
       saveProgState(); renderPushProgram();
     }
 
-    // Sauvegarde détaillée de la feuille de route
     function logRouteDayCompletion(dayNum) {
       const routeHistory = JSON.parse(localStorage.getItem('routeHistory')) || [];
       const todayStr = new Date().toISOString().split('T')[0];
@@ -1042,11 +1069,11 @@
       
       const activeDatesMap = {};
       
-      // Planks & Tabata formaté proprement
+      // Planks & Tabata
       plankHistory.forEach(h => {
         if(!activeDatesMap[h.date]) activeDatesMap[h.date] = [];
         if (h.type === 'tabata' || h.variant === 'Tabata') {
-          activeDatesMap[h.date].push(`🔥 Tabata : ${h.work||20}s effort / ${h.rest||10}s repos (${h.cycles||8} cycles = ${h.seconds}s total)`);
+          activeDatesMap[h.date].push(`🔥 Tabata : ${h.work||20}s effort / ${h.rest||10}s repos (${h.cycles||8} cycles)`);
         } else {
           activeDatesMap[h.date].push(`⏱️ Gainage Libre (${h.variant||'Standard'}) : ${h.seconds}s`);
         }
@@ -1089,13 +1116,13 @@
         dayDiv.onclick = () => {
           let detailsHtml = `<strong>Rappel du ${dateString} :</strong><br>`;
           if (activeDatesMap[dateString]) {
-            detailsHtml += activeDatesMap[dateString].join('<br>');
+            detailsHtml += activeDatesMap[dateString].join('<br><br>');
           } else {
             detailsHtml += 'Aucune activité enregistrée.';
           }
 
           if (badgesByDateMap[dateString] && badgesByDateMap[dateString].length > 0) {
-            detailsHtml += `<span class="trophy-mention"><br>🏆 Trophée(s) obtenu(s) :<br>`;
+            detailsHtml += `<span class="trophy-mention"><br><br>🏆 Trophée(s) obtenu(s) :<br>`;
             detailsHtml += badgesByDateMap[dateString].map(b => `• ${b.icon} ${b.title}`).join('<br>');
             detailsHtml += `</span>`;
           }

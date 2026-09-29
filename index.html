@@ -499,8 +499,11 @@
       });
     }
 
-    async function syncCloudFirestore(isManual = false) {
-      if (!db || !currentUserId) { if(isManual) alert("Cloud non connecté."); return; }
+async function syncCloudFirestore(isManual = false) {
+      if (!db || !currentUserId) { 
+        if(isManual) alert("Cloud non connecté (authentification en cours)."); 
+        return; 
+      }
       const btn = document.getElementById('btnCloud');
       if(isManual) btn.innerHTML = "🔄 Sync...";
       try {
@@ -513,8 +516,9 @@
           pushTargetDay: state.pushTargetDay,
           source: "Web App"
         }, { merge: true });
-        if(isManual) { btn.innerHTML = "☁️ OK"; setTimeout(() => btn.innerHTML = "☁️ Cloud", 3000); }
+        if(isManual) { btn.innerHTML = "☁️️ OK"; setTimeout(() => btn.innerHTML = "☁️ Cloud", 3000); }
       } catch (err) {
+        console.error("ERREUR FIREBASE DÉTAILLÉE :", err); // <--- AJOUTE CETTE LIGNE
         if(isManual) btn.innerHTML = "❌ Err";
       }
     }

@@ -174,7 +174,7 @@
     .stats-text { display: flex; justify-content: space-between; color: var(--text-sec); font-size: 0.7rem; margin-top: 4px; font-weight: 500; }
     .chart-container { position: relative; height: 150px; width: 100%; margin-top: 6px; }
 
-    .badges-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; max-height: 400px; overflow-y: auto; padding-right: 4px; }
+    .badges-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
     .badge-card { background: var(--surface-bright); border-radius: 14px; padding: 10px; text-align: center; border: 1px solid rgba(255,255,255,0.04); opacity: 0.35; display: flex; flex-direction: column; justify-content: center; }
     .badge-card.unlocked { opacity: 1; border-color: var(--primary); background: rgba(79, 55, 139, 0.25); }
     .badge-icon { font-size: 1.3rem; margin-bottom: 2px; display: block; }
@@ -346,7 +346,9 @@
     <div class="card">
       <h3>🏆 Hall des 52 Trophées</h3>
       <p style="font-size:0.65rem; color:var(--text-sec); margin-top:0; margin-bottom:10px;">Vos accomplissements débloqués au fil du temps.</p>
-      <div class="badges-grid" id="badgesContainer"></div>
+      
+      <!-- Container global, l'organisation se fait en JS -->
+      <div id="badgesContainer" style="max-height: 450px; overflow-y: auto; padding-right: 4px;"></div>
     </div>
   </div>
 
@@ -378,19 +380,28 @@
     </div>
 
     <div class="card">
-      <h3>Sauvegarde & Export Santé</h3>
+      <h3>Sauvegarde & Import/Export CSV</h3>
       <p style="font-size:0.75rem; color:var(--text-sec); line-height:1.3;">
-        Générez un fichier CSV ou copiez votre code de secours.
+        Récupérez ou intégrez vos données pour synchroniser l'historique de l'application.
       </p>
       <div style="display: flex; gap: 8px; margin-top: 10px;">
         <button class="btn-primary" onclick="exportToCSV()">Exporter CSV</button>
-        <button class="btn-sec" onclick="triggerBackup()">Copier Code</button>
+        <button class="btn-sec" onclick="document.getElementById('csvImportInput').click()">Importer CSV</button>
+        <!-- Input caché pour gérer le fichier -->
+        <input type="file" id="csvImportInput" accept=".csv" style="display:none" onchange="importCSV(event)">
       </div>
     </div>
   </div>
 
 
   <script>
+    /* ================= GESTION DES FUSEAUX HORAIRES LOCAUX ================= */
+    // Empêche les décalages d'enregistrement dus à l'heure universelle UTC (ex: 1h du matin en France -> veille en UTC)
+    function getLocalIsoDate(dateObj = new Date()) {
+      const offset = dateObj.getTimezoneOffset() * 60000;
+      return new Date(dateObj.getTime() - offset).toISOString().split('T')[0];
+    }
+
     /* ================= ÉTAT CENTRALISÉ & FIREBASE CLOUD ================= */
     const firebaseConfig = {
       apiKey: "AIzaSyCrZOBTMn8n1KgoZ9xvQtT7hFRT6Zoxfro",
@@ -483,7 +494,6 @@
       });
     }
 
-    // Fonction de synchro cloud avec affichage direct de l'erreur sur le bouton
     async function syncCloudFirestore(isManual = false) {
       const btn = document.getElementById('btnCloud');
       if (!db) { if(isManual) btn.innerHTML = "❌ NoDB"; return; }
@@ -574,11 +584,13 @@
       ]);
       let streak = 0, d = new Date();
       while (true) {
-        if (dates.has(d.toISOString().split('T')[0])) { streak++; d.setDate(d.getDate() - 1); }
+        if (dates.has(getLocalIsoDate(d))) { 
+          streak++; d.setDate(d.getDate() - 1); 
+        }
         else {
           if (streak === 0) {
             d.setDate(d.getDate() - 1);
-            if (dates.has(d.toISOString().split('T')[0])) { streak++; d.setDate(d.getDate() - 1); continue; }
+            if (dates.has(getLocalIsoDate(d))) { streak++; d.setDate(d.getDate() - 1); continue; }
           }
           break;
         }
@@ -606,7 +618,7 @@
     /* ================= MODULE 1 : PLANKS & TABATA ================= */
     let interval = null; 
     let standardSecs = 0; let isStandardRunning = false; let isTabataRunning = false;
-    let tabataPhase = 'prep'; let tabataCycle = 1; let tabataTimeLeft = 15;
+    let tabataPhase = 'prep'; let tabataCycle = 1; let tabataTimeLeft = 10;
     let tabataRestSpoken = false;
 
     function updateStandardDisplay() {
@@ -636,7 +648,7 @@
       clearInterval(interval); isStandardRunning = false; document.getElementById('medalRing').classList.remove('active');
       
       const maxBefore = getPlankRecord();
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = getLocalIsoDate();
       state.planksHistory.push({ date: todayStr, seconds: standardSecs, variant: selectedPlankVariant, type: "free" });
       saveLocalState();
 
@@ -671,7 +683,8 @@
       const restDur = parseInt(document.getElementById('restInput').value) || 10;
       document.getElementById('workInput').disabled = true; document.getElementById('restInput').disabled = true;
 
-      isTabataRunning = true; tabataPhase = 'prep'; tabataCycle = 1; tabataTimeLeft = 15; tabataRestSpoken = false;
+      // Passage de la préparation de 15s à 10s
+      isTabataRunning = true; tabataPhase = 'prep'; tabataCycle = 1; tabataTimeLeft = 10; tabataRestSpoken = false;
       document.getElementById('tabataBtn').innerText = 'Stopper'; speak("Préparez-vous"); updateTabataDisplay();
 
       interval = setInterval(() => {
@@ -709,7 +722,7 @@
       
       const totalSecs = 8 * workDur;
       state.planksHistory.push({
-        date: new Date().toISOString().split('T')[0],
+        date: getLocalIsoDate(), // Utilisation du fuseau horaire local
         seconds: totalSecs,
         variant: 'Tabata',
         type: 'tabata',
@@ -912,7 +925,7 @@
     }
 
     function logRouteDayCompletion(dayNum) {
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = getLocalIsoDate(); // Utilisation du fuseau horaire local
       const dayData = program40Days[dayNum - 1];
       
       let summary = `Jour ${dayNum} de la feuille de route validé !`;
@@ -958,7 +971,7 @@
     function savePushSession() {
       if (currentPushCount === 0) return;
       const maxBefore = getPushRecord();
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = getLocalIsoDate(); // Utilisation du fuseau horaire local
       state.pushupHistory.push({ date: todayStr, count: currentPushCount, type: "manual", variant: selectedPushVariant });
       saveLocalState();
       
@@ -990,7 +1003,7 @@
       });
     }
 
-    /* ================= GESTION DES 52 TROPHÉES & DATES ================= */
+    /* ================= GESTION DES 52 TROPHÉES & DATES (Avec Catégorisation) ================= */
     function getAllBadgesStatus() {
       const freeSessions = state.planksHistory.filter(h => h.variant !== 'Tabata' && h.type !== 'tabata');
       const totalPlankSecs = state.planksHistory.reduce((acc, h) => acc + h.seconds, 0);
@@ -1013,94 +1026,97 @@
         const allDates = Object.keys(dailyMap).sort();
         for(let dStr of allDates) {
           let cumSecs = 0;
-          for(let h of state.planksHistory) {
-            if(h.date <= dStr) cumSecs += h.seconds;
-          }
-          if(checkFn({ cumSecs, maxPush, streak, weekSecs, monthSecs, freeSessions })) {
-            return dStr;
-          }
+          for(let h of state.planksHistory) { if(h.date <= dStr) cumSecs += h.seconds; }
+          if(checkFn({ cumSecs, maxPush, streak, weekSecs, monthSecs, freeSessions })) { return dStr; }
         }
         return null;
       }
 
       const badges = [];
 
+      // Catégorie : Gainage
       for(let i=1; i<=6; i++) {
-        const targetMin = i * 5;
-        const u = totalPlankSecs >= targetMin * 60;
-        badges.push({ icon: '🧱', title: `Maçon ${i}`, desc: `Cumuler ${targetMin} min`, unlocked: u, date: u ? findDateForCondition(s => s.cumSecs >= targetMin * 60) : null });
-      }
-      {
-        const u = countVariant('Latérale') >= 5;
-        badges.push({ icon: '📐', title: 'Maçon Spécialiste', desc: '5x Gainage Latérale', unlocked: u, date: u ? '2026-09-24' : null });
-      }
-      {
-        const u = countVariant('Ours') >= 5;
-        badges.push({ icon: '🐾', title: 'Maçon Quadrupède', desc: '5x Gainage Ours', unlocked: u, date: u ? '2026-09-24' : null });
-      }
-      {
-        const u = countVariant('Superman') >= 5;
-        badges.push({ icon: '🦸', title: 'Maçon Aérien', desc: '5x Gainage Superman', unlocked: u, date: u ? '2026-09-24' : null });
-      }
-      {
-        const u = freeSessions.length >= 10;
-        badges.push({ icon: '🔁', title: 'Maçon Régulier', desc: '10 sessions de gainage', unlocked: u, date: u ? '2026-09-25' : null });
-      }
-      {
-        const u = freeSessions.length >= 20;
-        badges.push({ icon: '🛡️', title: 'Maçon d\'Acier', desc: '20 sessions de gainage', unlocked: u, date: u ? '2026-09-26' : null });
+        const targetMin = i * 5; const u = totalPlankSecs >= targetMin * 60;
+        badges.push({ category: 'Gainage', icon: '🧱', title: `Maçon ${i}`, desc: `Cumuler ${targetMin} min`, unlocked: u, date: u ? findDateForCondition(s => s.cumSecs >= targetMin * 60) : null });
       }
       for(let [idx, mins] of [[12, 35], [13, 45], [14, 60], [15, 75]]) {
         const u = totalPlankSecs >= mins * 60;
         let titleName = idx === 12 ? 'Maçon de Bronze' : idx === 13 ? 'Maçon d\'Argent' : idx === 14 ? 'Maçon d\'Or' : 'Maçon Légendaire';
-        badges.push({ icon: '🏆', title: titleName, desc: `Cumuler ${mins} min`, unlocked: u, date: u ? findDateForCondition(s => s.cumSecs >= mins * 60) : null });
+        badges.push({ category: 'Gainage', icon: '🏆', title: titleName, desc: `Cumuler ${mins} min`, unlocked: u, date: u ? findDateForCondition(s => s.cumSecs >= mins * 60) : null });
       }
 
+      // Catégorie : Variantes
+      let uLat = countVariant('Latérale') >= 5; badges.push({ category: 'Variantes', icon: '📐', title: 'Maçon Spécialiste', desc: '5x Gainage Latérale', unlocked: uLat, date: uLat ? '2026-09-24' : null });
+      let uOurs = countVariant('Ours') >= 5; badges.push({ category: 'Variantes', icon: '🐾', title: 'Maçon Quadrupède', desc: '5x Gainage Ours', unlocked: uOurs, date: uOurs ? '2026-09-24' : null });
+      let uSup = countVariant('Superman') >= 5; badges.push({ category: 'Variantes', icon: '🦸', title: 'Maçon Aérien', desc: '5x Gainage Superman', unlocked: uSup, date: uSup ? '2026-09-24' : null });
+
+      // Catégorie : Push-pull
       for(let i=1; i<=10; i++) {
-        const reps = i * 10;
-        const u = maxPush >= reps;
-        const pMatch = state.pushupHistory.find(h => h.count >= reps);
-        badges.push({ icon: '💪', title: `Force ${i}`, desc: `Atteindre ${reps} reps`, unlocked: u, date: u && pMatch ? pMatch.date : null });
+        const reps = i * 10; const u = maxPush >= reps; const pMatch = state.pushupHistory.find(h => h.count >= reps);
+        badges.push({ category: 'Push-pull', icon: '💪', title: `Force ${i}`, desc: `Atteindre ${reps} reps`, unlocked: u, date: u && pMatch ? pMatch.date : null });
       }
 
-      const routeMilestones = [
-        { day: 10, label: 'Route J10' }, { day: 20, label: 'Route J20' }, { day: 30, label: 'Route J30' }, { day: 40, label: 'Route J40' }
-      ];
+      // Catégorie : Feuille de Route
+      const routeMilestones = [ { day: 10, label: 'Route J10' }, { day: 20, label: 'Route J20' }, { day: 30, label: 'Route J30' }, { day: 40, label: 'Route J40' } ];
       routeMilestones.forEach(m => {
         const isDone = state.pushProgState[m.day - 1] && state.pushProgState[m.day - 1].status === 'done';
-        badges.push({ icon: '🗺️', title: m.label, desc: `Valider Jour ${m.day}`, unlocked: isDone, date: isDone ? '2026-09-26' : null });
+        badges.push({ category: 'Feuille de Route', icon: '🗺️', title: m.label, desc: `Valider Jour ${m.day}`, unlocked: isDone, date: isDone ? '2026-09-26' : null });
       });
       const allRouteDone = state.pushProgState.every((st, idx) => program40Days[idx].isRestDay || st.status === 'done');
-      badges.push({ icon: '👑', title: 'Maître de la Route', desc: '40 jours validés', unlocked: allRouteDone, date: allRouteDone ? '2026-09-26' : null });
+      badges.push({ category: 'Feuille de Route', icon: '👑', title: 'Maître de la Route', desc: '40 jours validés', unlocked: allRouteDone, date: allRouteDone ? '2026-09-26' : null });
 
+      // Catégorie : Assiduité
+      let uReg = freeSessions.length >= 10; badges.push({ category: 'Assiduité', icon: '🔁', title: 'Maçon Régulier', desc: '10 sessions', unlocked: uReg, date: uReg ? '2026-09-25' : null });
+      let uAcier = freeSessions.length >= 20; badges.push({ category: 'Assiduité', icon: '🛡️', title: 'Maçon d\'Acier', desc: '20 sessions', unlocked: uAcier, date: uAcier ? '2026-09-26' : null });
       for(let i=1; i<=15; i++) {
         const u = streak >= i;
-        badges.push({ icon: '🔥', title: `Flamme ${i}`, desc: `Série de ${i} jours`, unlocked: u, date: u ? '2026-09-26' : null });
+        badges.push({ category: 'Assiduité', icon: '🔥', title: `Flamme ${i}`, desc: `Série de ${i} jours`, unlocked: u, date: u ? '2026-09-26' : null });
       }
 
-      badges.push({ icon: '⏱️', title: 'Gainage 2 min', desc: 'Séance >= 2 min', unlocked: freeSessions.some(h=>h.seconds>=120), date: freeSessions.some(h=>h.seconds>=120) ? freeSessions.find(h=>h.seconds>=120).date : null });
-      badges.push({ icon: '🧱', title: 'Gainage 3 min', desc: 'Séance >= 3 min', unlocked: freeSessions.some(h=>h.seconds>=180), date: freeSessions.some(h=>h.seconds>=180) ? freeSessions.find(h=>h.seconds>=180).date : null });
-      badges.push({ icon: '⚡', title: 'Gainage 4 min', desc: 'Séance >= 4 min', unlocked: freeSessions.some(h=>h.seconds>=240), date: freeSessions.some(h=>h.seconds>=240) ? freeSessions.find(h=>h.seconds>=240).date : null });
-      badges.push({ icon: '🔥', title: 'Gainage 5 min', desc: 'Séance >= 5 min', unlocked: freeSessions.some(h=>h.seconds>=300), date: freeSessions.some(h=>h.seconds>=300) ? freeSessions.find(h=>h.seconds>=300).date : null });
-      badges.push({ icon: '👑', title: 'Cap 6 minutes', desc: 'Gainage >= 6 min', unlocked: freeSessions.some(h=>h.seconds>=360), date: freeSessions.some(h=>h.seconds>=360) ? freeSessions.find(h=>h.seconds>=360).date : null });
-      badges.push({ icon: '🎯', title: 'Objectif Semaine', desc: 'Atteindre 15 min / sem', unlocked: weekSecs >= 900, date: weekSecs >= 900 ? '2026-09-26' : null });
-      badges.push({ icon: '🌟', title: 'Objectif Mois', desc: 'Atteindre 60 min / mois', unlocked: monthSecs >= 3600, date: monthSecs >= 3600 ? '2026-09-26' : null });
+      // Catégorie : Jalons Spéciaux
+      badges.push({ category: 'Jalons Spéciaux', icon: '⏱️', title: 'Gainage 2 min', desc: 'Séance >= 2 min', unlocked: freeSessions.some(h=>h.seconds>=120), date: freeSessions.some(h=>h.seconds>=120) ? freeSessions.find(h=>h.seconds>=120).date : null });
+      badges.push({ category: 'Jalons Spéciaux', icon: '🧱', title: 'Gainage 3 min', desc: 'Séance >= 3 min', unlocked: freeSessions.some(h=>h.seconds>=180), date: freeSessions.some(h=>h.seconds>=180) ? freeSessions.find(h=>h.seconds>=180).date : null });
+      badges.push({ category: 'Jalons Spéciaux', icon: '⚡', title: 'Gainage 4 min', desc: 'Séance >= 4 min', unlocked: freeSessions.some(h=>h.seconds>=240), date: freeSessions.some(h=>h.seconds>=240) ? freeSessions.find(h=>h.seconds>=240).date : null });
+      badges.push({ category: 'Jalons Spéciaux', icon: '🔥', title: 'Gainage 5 min', desc: 'Séance >= 5 min', unlocked: freeSessions.some(h=>h.seconds>=300), date: freeSessions.some(h=>h.seconds>=300) ? freeSessions.find(h=>h.seconds>=300).date : null });
+      badges.push({ category: 'Jalons Spéciaux', icon: '👑', title: 'Cap 6 minutes', desc: 'Gainage >= 6 min', unlocked: freeSessions.some(h=>h.seconds>=360), date: freeSessions.some(h=>h.seconds>=360) ? freeSessions.find(h=>h.seconds>=360).date : null });
+      badges.push({ category: 'Jalons Spéciaux', icon: '🎯', title: 'Objectif Semaine', desc: 'Atteindre 15 min / sem', unlocked: weekSecs >= 900, date: weekSecs >= 900 ? '2026-09-26' : null });
+      badges.push({ category: 'Jalons Spéciaux', icon: '🌟', title: 'Objectif Mois', desc: 'Atteindre 60 min / mois', unlocked: monthSecs >= 3600, date: monthSecs >= 3600 ? '2026-09-26' : null });
 
       return badges;
     }
 
     function renderBadges() {
       const badges = getAllBadgesStatus();
-      const container = document.getElementById('badgesContainer'); container.innerHTML = '';
-      badges.forEach(b => {
-        const div = document.createElement('div');
-        div.className = `badge-card ${b.unlocked ? 'unlocked' : ''}`;
-        div.innerHTML = `<span class="badge-icon">${b.icon}</span><div class="badge-title">${b.title}</div><div class="badge-desc">${b.desc}</div>`;
-        container.appendChild(div);
+      const container = document.getElementById('badgesContainer'); 
+      container.innerHTML = '';
+      
+      // Regroupement thématique des Trophées
+      const categoriesOrder = ['Gainage', 'Variantes', 'Push-pull', 'Feuille de Route', 'Assiduité', 'Jalons Spéciaux'];
+
+      categoriesOrder.forEach(cat => {
+        const catBadges = badges.filter(b => b.category === cat);
+        if(catBadges.length === 0) return;
+
+        const catTitle = document.createElement('h4');
+        catTitle.style.cssText = "width: 100%; color: var(--primary); margin: 15px 0 8px 0; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px; font-size: 0.85rem;";
+        catTitle.innerText = cat;
+        container.appendChild(catTitle);
+
+        const grid = document.createElement('div');
+        grid.className = 'badges-grid';
+
+        catBadges.forEach(b => {
+          const div = document.createElement('div');
+          div.className = `badge-card ${b.unlocked ? 'unlocked' : ''}`;
+          div.innerHTML = `<span class="badge-icon">${b.icon}</span><div class="badge-title">${b.title}</div><div class="badge-desc">${b.desc}</div>`;
+          grid.appendChild(div);
+        });
+
+        container.appendChild(grid);
       });
     }
 
-    /* ================= MODULE 4 : CALENDRIER & HISTORIQUE ENRICHI ================= */
+    /* ================= MODULE 4 : CALENDRIER & IMPORT/EXPORT CSV ================= */
     let calCurrentDate = new Date();
     function changeMonth(dir) { calCurrentDate.setMonth(calCurrentDate.getMonth() + dir); renderCalendar(); }
 
@@ -1185,18 +1201,79 @@
       let csvContent = "data:text/csv;charset=utf-8,Date,Activite,Variante_ou_Detail,Valeur\n";
       state.planksHistory.forEach(h => { csvContent += `${h.date},Planks,${h.variant || 'Standard'},${h.seconds}s\n`; });
       state.pushupHistory.forEach(h => { csvContent += `${h.date},Push-pull,${h.variant || 'Standard'},${h.count}\n`; });
-      state.routeHistory.forEach(h => { csvContent += `${h.date},FeuilleDeRoute,Jour_${h.day},"${h.summary}"\n`; });
+      state.routeHistory.forEach(h => { csvContent += `${h.date},FeuilleDeRoute,Jour_${h.day},"${h.summary.replace(/"/g, '""')}"\n`; });
       
       const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent));
       link.setAttribute("download", "core_push_export.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
     }
 
-    function triggerBackup() {
-      navigator.clipboard.writeText(JSON.stringify({ 
-        planksHistory: state.planksHistory, 
-        pushupHistory: state.pushupHistory, 
-        routeHistory: state.routeHistory 
-      })).then(() => alert("Code de secours copié !"));
+    function importCSV(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const text = e.target.result;
+        const lines = text.split('\n');
+        let importedCount = 0;
+        
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+          
+          let firstComma = line.indexOf(',');
+          let secondComma = line.indexOf(',', firstComma + 1);
+          let thirdComma = line.indexOf(',', secondComma + 1);
+          
+          if (firstComma === -1 || secondComma === -1 || thirdComma === -1) continue;
+
+          const date = line.substring(0, firstComma).trim();
+          const activite = line.substring(firstComma + 1, secondComma).trim();
+          const variante = line.substring(secondComma + 1, thirdComma).trim();
+          let valeur = line.substring(thirdComma + 1).trim();
+          
+          if (valeur.startsWith('"') && valeur.endsWith('"')) {
+             valeur = valeur.substring(1, valeur.length - 1).replace(/""/g, '"');
+          }
+
+          if (activite === 'Planks') {
+             const secs = parseInt(valeur.replace('s',''));
+             const isTabata = variante === 'Tabata';
+             const exists = state.planksHistory.some(h => h.date === date && h.seconds === secs && h.variant === variante);
+             if (!exists) {
+               state.planksHistory.push({
+                 date: date, seconds: secs, variant: variante,
+                 type: isTabata ? 'tabata' : 'free',
+                 ...(isTabata && { work: 20, rest: 10, cycles: 8 })
+               });
+               importedCount++;
+             }
+          } else if (activite === 'Push-pull') {
+             const count = parseInt(valeur);
+             const exists = state.pushupHistory.some(h => h.date === date && h.count === count && h.variant === variante);
+             if (!exists) {
+               state.pushupHistory.push({ date: date, count: count, variant: variante, type: 'manual' });
+               importedCount++;
+             }
+          } else if (activite === 'FeuilleDeRoute') {
+             const day = parseInt(variante.replace('Jour_',''));
+             const exists = state.routeHistory.some(h => h.date === date && h.day === day && h.summary === valeur);
+             if (!exists) {
+               state.routeHistory.push({ date: date, day: day, summary: valeur });
+               importedCount++;
+             }
+          }
+        }
+        
+        if (importedCount > 0) {
+          saveLocalState(); syncCloudFirestore(); refreshAllUI();
+          alert(`${importedCount} activités importées avec succès !`);
+        } else {
+          alert("Aucune nouvelle activité à importer ou format invalide.");
+        }
+        event.target.value = ''; 
+      };
+      reader.readAsText(file);
     }
 
     refreshAllUI();

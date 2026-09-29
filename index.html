@@ -174,7 +174,8 @@
     .stats-text { display: flex; justify-content: space-between; color: var(--text-sec); font-size: 0.7rem; margin-top: 4px; font-weight: 500; }
     .chart-container { position: relative; height: 150px; width: 100%; margin-top: 6px; }
 
-    .badges-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    /* Modification des Trophées pour gérer les catégories */
+    .badges-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px; }
     .badge-card { background: var(--surface-bright); border-radius: 14px; padding: 10px; text-align: center; border: 1px solid rgba(255,255,255,0.04); opacity: 0.35; display: flex; flex-direction: column; justify-content: center; }
     .badge-card.unlocked { opacity: 1; border-color: var(--primary); background: rgba(79, 55, 139, 0.25); }
     .badge-icon { font-size: 1.3rem; margin-bottom: 2px; display: block; }
@@ -347,7 +348,7 @@
       <h3>🏆 Hall des 52 Trophées</h3>
       <p style="font-size:0.65rem; color:var(--text-sec); margin-top:0; margin-bottom:10px;">Vos accomplissements débloqués au fil du temps.</p>
       
-      <!-- Container global, l'organisation se fait en JS -->
+      <!-- ÉVOLUTION 4 : Trophées catégorisés -->
       <div id="badgesContainer" style="max-height: 450px; overflow-y: auto; padding-right: 4px;"></div>
     </div>
   </div>
@@ -386,8 +387,9 @@
       </p>
       <div style="display: flex; gap: 8px; margin-top: 10px;">
         <button class="btn-primary" onclick="exportToCSV()">Exporter CSV</button>
+        
+        <!-- ÉVOLUTION 1 : Bouton et Input Import CSV -->
         <button class="btn-sec" onclick="document.getElementById('csvImportInput').click()">Importer CSV</button>
-        <!-- Input caché pour gérer le fichier -->
         <input type="file" id="csvImportInput" accept=".csv" style="display:none" onchange="importCSV(event)">
       </div>
     </div>
@@ -395,8 +397,8 @@
 
 
   <script>
-    /* ================= GESTION DES FUSEAUX HORAIRES LOCAUX ================= */
-    // Empêche les décalages d'enregistrement dus à l'heure universelle UTC (ex: 1h du matin en France -> veille en UTC)
+    /* ================= ÉVOLUTION 2 : GESTION DES FUSEAUX HORAIRES LOCAUX ================= */
+    // Empêche les décalages d'enregistrement dus à l'heure universelle UTC (ex: 23h en France = veille en UTC)
     function getLocalIsoDate(dateObj = new Date()) {
       const offset = dateObj.getTimezoneOffset() * 60000;
       return new Date(dateObj.getTime() - offset).toISOString().split('T')[0];
@@ -648,7 +650,7 @@
       clearInterval(interval); isStandardRunning = false; document.getElementById('medalRing').classList.remove('active');
       
       const maxBefore = getPlankRecord();
-      const todayStr = getLocalIsoDate();
+      const todayStr = getLocalIsoDate(); // Application correction fuseau horaire
       state.planksHistory.push({ date: todayStr, seconds: standardSecs, variant: selectedPlankVariant, type: "free" });
       saveLocalState();
 
@@ -683,7 +685,7 @@
       const restDur = parseInt(document.getElementById('restInput').value) || 10;
       document.getElementById('workInput').disabled = true; document.getElementById('restInput').disabled = true;
 
-      // Passage de la préparation de 15s à 10s
+      // ÉVOLUTION 3 : La préparation du Tabata est fixée à 10 secondes
       isTabataRunning = true; tabataPhase = 'prep'; tabataCycle = 1; tabataTimeLeft = 10; tabataRestSpoken = false;
       document.getElementById('tabataBtn').innerText = 'Stopper'; speak("Préparez-vous"); updateTabataDisplay();
 
@@ -722,7 +724,7 @@
       
       const totalSecs = 8 * workDur;
       state.planksHistory.push({
-        date: getLocalIsoDate(), // Utilisation du fuseau horaire local
+        date: getLocalIsoDate(), // Application correction fuseau horaire
         seconds: totalSecs,
         variant: 'Tabata',
         type: 'tabata',
@@ -925,7 +927,7 @@
     }
 
     function logRouteDayCompletion(dayNum) {
-      const todayStr = getLocalIsoDate(); // Utilisation du fuseau horaire local
+      const todayStr = getLocalIsoDate(); // Application correction fuseau horaire
       const dayData = program40Days[dayNum - 1];
       
       let summary = `Jour ${dayNum} de la feuille de route validé !`;
@@ -971,7 +973,7 @@
     function savePushSession() {
       if (currentPushCount === 0) return;
       const maxBefore = getPushRecord();
-      const todayStr = getLocalIsoDate(); // Utilisation du fuseau horaire local
+      const todayStr = getLocalIsoDate(); // Application correction fuseau horaire
       state.pushupHistory.push({ date: todayStr, count: currentPushCount, type: "manual", variant: selectedPushVariant });
       saveLocalState();
       
@@ -1003,7 +1005,7 @@
       });
     }
 
-    /* ================= GESTION DES 52 TROPHÉES & DATES (Avec Catégorisation) ================= */
+    /* ================= ÉVOLUTION 4 : Trophées organisés avec catégories ================= */
     function getAllBadgesStatus() {
       const freeSessions = state.planksHistory.filter(h => h.variant !== 'Tabata' && h.type !== 'tabata');
       const totalPlankSecs = state.planksHistory.reduce((acc, h) => acc + h.seconds, 0);
@@ -1090,15 +1092,15 @@
       const container = document.getElementById('badgesContainer'); 
       container.innerHTML = '';
       
-      // Regroupement thématique des Trophées
       const categoriesOrder = ['Gainage', 'Variantes', 'Push-pull', 'Feuille de Route', 'Assiduité', 'Jalons Spéciaux'];
 
       categoriesOrder.forEach(cat => {
         const catBadges = badges.filter(b => b.category === cat);
         if(catBadges.length === 0) return;
 
+        // Sous-titre propre pour chaque catégorie
         const catTitle = document.createElement('h4');
-        catTitle.style.cssText = "width: 100%; color: var(--primary); margin: 15px 0 8px 0; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px; font-size: 0.85rem;";
+        catTitle.style.cssText = "width: 100%; color: var(--primary); margin: 15px 0 8px 0; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px; font-size: 0.85rem; text-align: left;";
         catTitle.innerText = cat;
         container.appendChild(catTitle);
 
@@ -1207,6 +1209,7 @@
       link.setAttribute("download", "core_push_export.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
     }
 
+    /* ================= ÉVOLUTION 1 : Fonction d'importation CSV ================= */
     function importCSV(event) {
       const file = event.target.files[0];
       if (!file) return;
@@ -1266,10 +1269,12 @@
         }
         
         if (importedCount > 0) {
-          saveLocalState(); syncCloudFirestore(); refreshAllUI();
+          saveLocalState(); 
+          syncCloudFirestore(); 
+          refreshAllUI();
           alert(`${importedCount} activités importées avec succès !`);
         } else {
-          alert("Aucune nouvelle activité à importer ou format invalide.");
+          alert("Aucune nouvelle activité à importer ou format non reconnu.");
         }
         event.target.value = ''; 
       };

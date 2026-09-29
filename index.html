@@ -405,7 +405,6 @@
     let auth = null;
     let currentUserId = null;
 
-    // État local initial (chargement immédiat)
     let state = {
       planksHistory: JSON.parse(localStorage.getItem('planksHistory')) || [],
       pushupHistory: JSON.parse(localStorage.getItem('pushupHistory')) || [],
@@ -431,7 +430,6 @@
       renderCalendar();
     }
 
-    // Initialisation Firebase & Temps Réel (Firestore)
     try {
       if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
       auth = firebase.auth();
@@ -443,19 +441,14 @@
       auth.onAuthStateChanged(user => {
         if (user) {
           currentUserId = user.uid;
-          // Écouteur temps réel (onSnapshot)
           db.collection("historique").doc(currentUserId).onSnapshot(doc => {
             if (doc.exists) {
               const cloudData = doc.data();
               if (cloudData.planks) mergePlanks(cloudData.planks);
               if (cloudData.pushups) mergePushups(cloudData.pushups);
               if (cloudData.routeProgress) mergeRoute(cloudData.routeProgress);
-              if (cloudData.pushProgState) {
-                state.pushProgState = cloudData.pushProgState;
-              }
-              if (cloudData.pushTargetDay) {
-                state.pushTargetDay = Math.max(state.pushTargetDay, cloudData.pushTargetDay);
-              }
+              if (cloudData.pushProgState) state.pushProgState = cloudData.pushProgState;
+              if (cloudData.pushTargetDay) state.pushTargetDay = Math.max(state.pushTargetDay, cloudData.pushTargetDay);
               saveLocalState();
               refreshAllUI();
             }
@@ -470,10 +463,7 @@
       const existingMap = new Set(state.planksHistory.map(h => `${h.date}_${h.seconds}_${h.variant}`));
       cloudList.forEach(item => {
         const key = `${item.date}_${item.seconds}_${item.variant}`;
-        if (!existingMap.has(key)) {
-          state.planksHistory.push(item);
-          existingMap.add(key);
-        }
+        if (!existingMap.has(key)) { state.planksHistory.push(item); existingMap.add(key); }
       });
     }
 
@@ -481,10 +471,7 @@
       const existingMap = new Set(state.pushupHistory.map(h => `${h.date}_${h.count}_${h.variant || 'Standard'}`));
       cloudList.forEach(item => {
         const key = `${item.date}_${item.count}_${item.variant || 'Standard'}`;
-        if (!existingMap.has(key)) {
-          state.pushupHistory.push(item);
-          existingMap.add(key);
-        }
+        if (!existingMap.has(key)) { state.pushupHistory.push(item); existingMap.add(key); }
       });
     }
 
@@ -492,27 +479,15 @@
       const existingMap = new Set(state.routeHistory.map(h => `${h.date}_${h.day}_${h.summary}`));
       cloudList.forEach(item => {
         const key = `${item.date}_${item.day}_${item.summary}`;
-        if (!existingMap.has(key)) {
-          state.routeHistory.push(item);
-          existingMap.add(key);
-        }
+        if (!existingMap.has(key)) { state.routeHistory.push(item); existingMap.add(key); }
       });
     }
 
-async function syncCloudFirestore(isManual = false) {
+    // Fonction de synchro cloud avec affichage direct de l'erreur sur le bouton
+    async function syncCloudFirestore(isManual = false) {
       const btn = document.getElementById('btnCloud');
-      
-      if (!db) {
-        alert("Erreur : Firebase DB n'est pas initialisé.");
-        if(isManual) btn.innerHTML = "❌ Err DB";
-        return;
-      }
-      
-      if (!currentUserId) {
-        alert("Erreur : Utilisateur non connecté (Patientez 2 secondes après le chargement).");
-        if(isManual) btn.innerHTML = "❌ Err Auth";
-        return;
-      }
+      if (!db) { if(isManual) btn.innerHTML = "❌ NoDB"; return; }
+      if (!currentUserId) { if(isManual) btn.innerHTML = "❌ NoAuth"; return; }
 
       if(isManual) btn.innerHTML = "🔄 Sync...";
       try {
@@ -526,14 +501,12 @@ async function syncCloudFirestore(isManual = false) {
           source: "Web App"
         }, { merge: true });
         
-        if(isManual) { 
-          btn.innerHTML = "☁️ OK"; 
-          setTimeout(() => btn.innerHTML = "☁️ Cloud", 3000); 
-        }
+        if(isManual) { btn.innerHTML = "☁️ OK"; setTimeout(() => btn.innerHTML = "☁️ Cloud", 3000); }
       } catch (err) {
-        alert("Erreur Firestore : " + err.message);
         console.error("ERREUR FIREBASE DÉTAILLÉE :", err);
-        if(isManual) btn.innerHTML = "❌ Err";
+        if(isManual) {
+          btn.innerHTML = "❌ " + (err.code || "Err");
+        }
       }
     }
 
@@ -704,7 +677,6 @@ async function syncCloudFirestore(isManual = false) {
       interval = setInterval(() => {
         tabataTimeLeft--;
         
-        // Règle vocale stricte : uniquement à 5s de la fin du repos
         if (tabataPhase === 'rest' && tabataTimeLeft === 5 && !tabataRestSpoken) {
           tabataRestSpoken = true;
           speak("Fin du repos dans 5, 4, 3, 2, 1, Go");
@@ -1227,7 +1199,6 @@ async function syncCloudFirestore(isManual = false) {
       })).then(() => alert("Code de secours copié !"));
     }
 
-    // Init All on Load
     refreshAllUI();
   </script>
 </body>

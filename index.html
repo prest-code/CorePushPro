@@ -7,6 +7,7 @@
 
   <!-- Firebase SDKs Compat -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -390,78 +391,142 @@
 
 
   <script>
-    /* ================= INITIALISATION FORCEE DES DONNEES (POUR AFFICHAGE DIRECT) ================= */
-    const realPlankHistory = [
-      {"date":"2026-09-15","seconds":141,"variant":"Standard","type":"free"},
-      {"date":"2026-09-22","seconds":100,"variant":"Standard","type":"free"},
-      {"date":"2026-09-23","seconds":160,"variant":"Standard","type":"free"},
-      {"date":"2026-09-24","seconds":160,"variant":"Standard","type":"free"},
-      {"date":"2026-09-25","seconds":160,"variant":"Standard","type":"free"},
-      {"date":"2026-09-26","seconds":160,"variant":"Tabata","type":"tabata","work":20,"rest":10,"cycles":8}
-    ];
+    /* ================= ÉTAT CENTRALISÉ & FIREBASE CLOUD ================= */
+    const firebaseConfig = {
+      apiKey: "AIzaSyCrZOBTMn8n1KgoZ9xvQtT7hFRT6Zoxfro",
+      authDomain: "corepushpro.firebaseapp.com",
+      projectId: "corepushpro",
+      storageBucket: "corepushpro.firebasestorage.app",
+      messagingSenderId: "334835559670",
+      appId: "1:334835559670:web:dfbb459c8652e6833f90d7"
+    };
 
-    const realPushupHistory = [
-      {"type":"record","date":"2026-09-22","count":30,"variant":"Standard"},
-      {"type":"record","count":31,"date":"2026-09-23","variant":"Standard"}
-    ];
+    let db = null;
+    let auth = null;
+    let currentUserId = null;
 
-    const realRouteHistory = [
-      {"date":"2026-09-24","day":1,"summary":"Jour 1 : 5x12 (Standard)"},
-      {"date":"2026-09-25","day":2,"summary":"Jour 2 : 3x12 (inclinées) + 2x8 (Diamond)"},
-      {"date":"2026-09-26","day":4,"summary":"Jour 4 : 5x14 (Standard)"}
-    ];
+    // État local initial (chargement immédiat)
+    let state = {
+      planksHistory: JSON.parse(localStorage.getItem('planksHistory')) || [],
+      pushupHistory: JSON.parse(localStorage.getItem('pushupHistory')) || [],
+      routeHistory: JSON.parse(localStorage.getItem('routeHistory')) || [],
+      pushProgState: JSON.parse(localStorage.getItem('pushProgState')) || [],
+      pushTargetDay: parseInt(localStorage.getItem('pushTargetDay')) || 1
+    };
 
-    // Utilisation d'une nouvelle clé d'initialisation pour FORCER l'écriture dans les vraies clés
-    if (!localStorage.getItem('init_v28')) {
-      localStorage.setItem('planksHistory', JSON.stringify(realPlankHistory));
-      localStorage.setItem('pushupHistory', JSON.stringify(realPushupHistory));
-      localStorage.setItem('routeHistory', JSON.stringify(realRouteHistory));
-      localStorage.setItem('init_v28', 'true');
+    function saveLocalState() {
+      localStorage.setItem('planksHistory', JSON.stringify(state.planksHistory));
+      localStorage.setItem('pushupHistory', JSON.stringify(state.pushupHistory));
+      localStorage.setItem('routeHistory', JSON.stringify(state.routeHistory));
+      localStorage.setItem('pushProgState', JSON.stringify(state.pushProgState));
+      localStorage.setItem('pushTargetDay', state.pushTargetDay);
     }
 
-    // Les fonctions lisent maintenant les VRAIES clés stables
+    function refreshAllUI() {
+      updatePlankStats();
+      updatePushupStats();
+      renderPushProgram();
+      calculateStreak();
+      renderBadges();
+      renderCalendar();
+    }
+
+    // Initialisation Firebase & Temps Réel (Firestore)
+    try {
+      if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+      auth = firebase.auth();
+      db = firebase.firestore();
+      db.enablePersistence().catch(() => {});
+
+      auth.signInAnonymously().catch(err => console.error("Auth anonyme erreur:", err));
+
+      auth.onAuthStateChanged(user => {
+        if (user) {
+          currentUserId = user.uid;
+          // Écouteur temps réel (onSnapshot)
+          db.collection("historique").doc(currentUserId).onSnapshot(doc => {
+            if (doc.exists) {
+              const cloudData = doc.data();
+              if (cloudData.planks) mergePlanks(cloudData.planks);
+              if (cloudData.pushups) mergePushups(cloudData.pushups);
+              if (cloudData.routeProgress) mergeRoute(cloudData.routeProgress);
+              if (cloudData.pushProgState) {
+                state.pushProgState = cloudData.pushProgState;
+              }
+              if (cloudData.pushTargetDay) {
+                state.pushTargetDay = Math.max(state.pushTargetDay, cloudData.pushTargetDay);
+              }
+              saveLocalState();
+              refreshAllUI();
+            }
+          }, err => console.error("Erreur sync temps réel:", err));
+        }
+      });
+    } catch (e) {
+      console.error("Erreur initialisation Firebase:", e);
+    }
+
+    function mergePlanks(cloudList) {
+      const existingMap = new Set(state.planksHistory.map(h => `${h.date}_${h.seconds}_${h.variant}`));
+      cloudList.forEach(item => {
+        const key = `${item.date}_${item.seconds}_${item.variant}`;
+        if (!existingMap.has(key)) {
+          state.planksHistory.push(item);
+          existingMap.add(key);
+        }
+      });
+    }
+
+    function mergePushups(cloudList) {
+      const existingMap = new Set(state.pushupHistory.map(h => `${h.date}_${h.count}_${h.variant || 'Standard'}`));
+      cloudList.forEach(item => {
+        const key = `${item.date}_${item.count}_${item.variant || 'Standard'}`;
+        if (!existingMap.has(key)) {
+          state.pushupHistory.push(item);
+          existingMap.add(key);
+        }
+      });
+    }
+
+    function mergeRoute(cloudList) {
+      const existingMap = new Set(state.routeHistory.map(h => `${h.date}_${h.day}_${h.summary}`));
+      cloudList.forEach(item => {
+        const key = `${item.date}_${item.day}_${item.summary}`;
+        if (!existingMap.has(key)) {
+          state.routeHistory.push(item);
+          existingMap.add(key);
+        }
+      });
+    }
+
+    async function syncCloudFirestore(isManual = false) {
+      if (!db || !currentUserId) { if(isManual) alert("Cloud non connecté."); return; }
+      const btn = document.getElementById('btnCloud');
+      if(isManual) btn.innerHTML = "🔄 Sync...";
+      try {
+        await db.collection("historique").doc(currentUserId).set({
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          planks: state.planksHistory,
+          pushups: state.pushupHistory,
+          routeProgress: state.routeHistory,
+          pushProgState: state.pushProgState,
+          pushTargetDay: state.pushTargetDay,
+          source: "Web App"
+        }, { merge: true });
+        if(isManual) { btn.innerHTML = "☁️ OK"; setTimeout(() => btn.innerHTML = "☁️ Cloud", 3000); }
+      } catch (err) {
+        if(isManual) btn.innerHTML = "❌ Err";
+      }
+    }
+
     function getPlankRecord() {
-      const hist = JSON.parse(localStorage.getItem('planksHistory')) || [];
-      const freeSessions = hist.filter(h => h.variant !== 'Tabata' && h.type !== 'tabata');
+      const freeSessions = state.planksHistory.filter(h => h.variant !== 'Tabata' && h.type !== 'tabata');
       const maxHist = freeSessions.length > 0 ? Math.max(...freeSessions.map(h => h.seconds)) : 120;
       return Math.max(120, maxHist);
     }
     
     function getPushRecord() {
-      const hist = JSON.parse(localStorage.getItem('pushupHistory')) || [];
-      return hist.length > 0 ? Math.max(...hist.map(h => h.count)) : 0;
-    }
-
-    /* ================= CLOUD FIRESTORE ================= */
-    const firebaseConfig = {
-      apiKey: window.env?.FIREBASE_API_KEY || "AIzaSy_REPLACE_IF_NEEDED",
-      authDomain: window.env?.FIREBASE_AUTH_DOMAIN || "corepushpro.firebaseapp.com",
-      projectId: window.env?.FIREBASE_PROJECT_ID || "corepushpro"
-    };
-
-    let db;
-    try {
-      if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-      db = firebase.firestore();
-    } catch (e) { console.error("Erreur Firebase :", e); }
-
-    async function syncCloudFirestore(isManual = false) {
-      if (!db) { if(isManual) alert("Firestore non connecté."); return; }
-      const btn = document.getElementById('btnCloud');
-      if(isManual) btn.innerHTML = "🔄 Sync...";
-      try {
-        const today = new Date().toISOString().split('T')[0];
-        await db.collection("historique").doc(today).set({
-          date: firebase.firestore.FieldValue.serverTimestamp(),
-          planks: JSON.parse(localStorage.getItem('planksHistory')) || [],
-          pushups: JSON.parse(localStorage.getItem('pushupHistory')) || [],
-          routeProgress: JSON.parse(localStorage.getItem('routeHistory')) || [],
-          source: "Web App"
-        }, { merge: true });
-        btn.innerHTML = "☁️ OK"; setTimeout(() => btn.innerHTML = "☁️ Cloud", 3000);
-      } catch (err) {
-        if(isManual) btn.innerHTML = "❌ Err";
-      }
+      return state.pushupHistory.length > 0 ? Math.max(...state.pushupHistory.map(h => h.count)) : 0;
     }
 
     /* ================= AUDIO & FX ================= */
@@ -469,9 +534,7 @@
     function getAudioContext() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); return audioCtx; }
     
     function playSound(type) {
-      // Bloque formellement tous les sons non désirés (retire les bips tactiles)
       if (type !== 'success' && type !== 'record' && type !== 'tabata') return; 
-      
       try {
         const ctx = getAudioContext(); if (ctx.state === 'suspended') ctx.resume();
         const now = ctx.currentTime; const osc = ctx.createOscillator(); const gain = ctx.createGain();
@@ -513,10 +576,11 @@
     }
 
     function calculateStreak() {
-      const plankHist = JSON.parse(localStorage.getItem('planksHistory')) || [];
-      const pushHist = JSON.parse(localStorage.getItem('pushupHistory')) || [];
-      const routeHist = JSON.parse(localStorage.getItem('routeHistory')) || [];
-      const dates = new Set([...plankHist.map(h => h.date), ...pushHist.map(h => h.date), ...routeHist.map(h => h.date)]);
+      const dates = new Set([
+        ...state.planksHistory.map(h => h.date), 
+        ...state.pushupHistory.map(h => h.date), 
+        ...state.routeHistory.map(h => h.date)
+      ]);
       let streak = 0, d = new Date();
       while (true) {
         if (dates.has(d.toISOString().split('T')[0])) { streak++; d.setDate(d.getDate() - 1); }
@@ -552,6 +616,7 @@
     let interval = null; 
     let standardSecs = 0; let isStandardRunning = false; let isTabataRunning = false;
     let tabataPhase = 'prep'; let tabataCycle = 1; let tabataTimeLeft = 15;
+    let tabataRestSpoken = false;
 
     function updateStandardDisplay() {
       const m = Math.floor(standardSecs / 60); const s = standardSecs % 60;
@@ -580,10 +645,9 @@
       clearInterval(interval); isStandardRunning = false; document.getElementById('medalRing').classList.remove('active');
       
       const maxBefore = getPlankRecord();
-      const history = JSON.parse(localStorage.getItem('planksHistory')) || [];
       const todayStr = new Date().toISOString().split('T')[0];
-      history.push({ date: todayStr, seconds: standardSecs, variant: selectedPlankVariant, type: "free" });
-      localStorage.setItem('planksHistory', JSON.stringify(history));
+      state.planksHistory.push({ date: todayStr, seconds: standardSecs, variant: selectedPlankVariant, type: "free" });
+      saveLocalState();
 
       if (standardSecs > maxBefore) {
         triggerVibration([300, 150, 300, 150, 500]); playSound('record'); triggerFX('fireworks'); speak("Nouveau record personnel !");
@@ -593,7 +657,7 @@
       
       standardSecs = 0; updateStandardDisplay();
       document.getElementById('startBtn').innerText = 'Chrono Libre'; document.getElementById('timerCard').className = 'card'; 
-      updatePlankStats(); calculateStreak(); syncCloudFirestore();
+      refreshAllUI(); syncCloudFirestore();
     }
 
     function updateTabataDisplay() {
@@ -616,15 +680,16 @@
       const restDur = parseInt(document.getElementById('restInput').value) || 10;
       document.getElementById('workInput').disabled = true; document.getElementById('restInput').disabled = true;
 
-      isTabataRunning = true; tabataPhase = 'prep'; tabataCycle = 1; tabataTimeLeft = 15;
+      isTabataRunning = true; tabataPhase = 'prep'; tabataCycle = 1; tabataTimeLeft = 15; tabataRestSpoken = false;
       document.getElementById('tabataBtn').innerText = 'Stopper'; speak("Préparez-vous"); updateTabataDisplay();
 
       interval = setInterval(() => {
         tabataTimeLeft--;
         
-        // CORRECTION VOCALE : Déclenchement exclusif à 5 secondes de la fin du repos
-        if (tabataPhase === 'rest' && tabataTimeLeft === 5) {
-            speak("Fin du repos dans 5, 4, 3, 2, 1, Go");
+        // Règle vocale stricte : uniquement à 5s de la fin du repos
+        if (tabataPhase === 'rest' && tabataTimeLeft === 5 && !tabataRestSpoken) {
+          tabataRestSpoken = true;
+          speak("Fin du repos dans 5, 4, 3, 2, 1, Go");
         }
 
         if (tabataTimeLeft < 0) {
@@ -632,12 +697,15 @@
             tabataPhase = 'work'; tabataTimeLeft = workDur; triggerVibration([500]); speak("Effort"); 
           }
           else if (tabataPhase === 'work') { 
-            tabataPhase = 'rest'; tabataTimeLeft = restDur; triggerVibration([150, 100, 150]); 
-            // Annonce vocale "Repos" supprimée
+            if (tabataCycle >= 8) {
+              endTabata(workDur, restDur);
+              return;
+            }
+            tabataPhase = 'rest'; tabataTimeLeft = restDur; tabataRestSpoken = false; triggerVibration([150, 100, 150]); 
           }
           else { 
-            tabataCycle++; if (tabataCycle > 8) { endTabata(workDur, restDur); return; } 
-            tabataPhase = 'work'; tabataTimeLeft = workDur; triggerVibration([500]); speak("Effort"); 
+            tabataCycle++; 
+            tabataPhase = 'work'; tabataTimeLeft = workDur; tabataRestSpoken = false; triggerVibration([500]); speak("Effort"); 
           }
         }
         updateTabataDisplay();
@@ -650,8 +718,7 @@
       document.getElementById('tabataBtn').innerText = 'Lancer Tabata (x8)'; document.getElementById('timerCard').className = 'card'; 
       
       const totalSecs = 8 * workDur;
-      const history = JSON.parse(localStorage.getItem('planksHistory')) || [];
-      history.push({
+      state.planksHistory.push({
         date: new Date().toISOString().split('T')[0],
         seconds: totalSecs,
         variant: 'Tabata',
@@ -660,16 +727,16 @@
         rest: restDur,
         cycles: 8
       });
-      localStorage.setItem('planksHistory', JSON.stringify(history));
+      saveLocalState();
       
       triggerVibration([500, 200, 500]); playSound('tabata'); triggerFX('confetti'); speak("Tabata terminé !");
       document.getElementById('display').innerText = "00:00"; document.getElementById('timerLabel').innerText = `Tabata validé (+${totalSecs}s)`;
-      updatePlankStats(); calculateStreak(); syncCloudFirestore();
+      refreshAllUI(); syncCloudFirestore();
     }
 
     function updatePlankStats() {
-      const plankHistory = JSON.parse(localStorage.getItem('planksHistory')) || [];
-      const dailyMap = {}; plankHistory.forEach(item => { dailyMap[item.date] = (dailyMap[item.date] || 0) + item.seconds; });
+      const dailyMap = {}; 
+      state.planksHistory.forEach(item => { dailyMap[item.date] = (dailyMap[item.date] || 0) + item.seconds; });
 
       const totalAllSecs = Object.values(dailyMap).reduce((a,b)=>a+b, 0);
       document.getElementById('globalGoalText').innerText = `${Math.floor(totalAllSecs / 60)} / 60 min`;
@@ -739,14 +806,12 @@
       { day: 40, ex: [{ name: "Standard", sets: 1, reps: "50 reps (Test Final)", rest: 0 }] },
     ];
 
-    let pushProgState = JSON.parse(localStorage.getItem('pushProgState')) || [];
-    let currentTargetDay = parseInt(localStorage.getItem('pushTargetDay')) || 1;
-    let currentPhase = currentTargetDay <= 20 ? 1 : 2;
+    let currentPhase = state.pushTargetDay <= 20 ? 1 : 2;
 
     for(let i = 0; i < 40; i++) {
-        if (!pushProgState[i]) {
-            if (program40Days[i].isRestDay) pushProgState[i] = { status: 'pending', setsDone: [] };
-            else pushProgState[i] = { status: 'pending', setsDone: program40Days[i].ex.map(e => new Array(e.sets).fill(false)) };
+        if (!state.pushProgState[i]) {
+            if (program40Days[i].isRestDay) state.pushProgState[i] = { status: 'pending', setsDone: [] };
+            else state.pushProgState[i] = { status: 'pending', setsDone: program40Days[i].ex.map(e => new Array(e.sets).fill(false)) };
         }
     }
 
@@ -763,34 +828,34 @@
 
       phaseDays.forEach((dayData) => {
         const dayIdx = dayData.day - 1;
-        const state = pushProgState[dayIdx];
-        const isActive = (dayData.day === currentTargetDay);
+        const stateItem = state.pushProgState[dayIdx];
+        const isActive = (dayData.day === state.pushTargetDay);
         
         const div = document.createElement('div');
-        div.className = `push-prog-day ${state.status === 'done' ? 'completed' : ''} ${isActive ? 'active-day' : ''}`;
+        div.className = `push-prog-day ${stateItem.status === 'done' ? 'completed' : ''} ${isActive ? 'active-day' : ''}`;
         
         let html = `<div class="push-prog-header">
             <span>Jour ${dayData.day} ${dayData.isRestDay ? '- Repos' : ''}</span>
-            <span>${state.status === 'done' ? '✅' : (isActive ? '🎯 Actuel' : '')}</span>
+            <span>${stateItem.status === 'done' ? '✅' : (isActive ? '🎯 Actuel' : '')}</span>
         </div>`;
         
         if (dayData.isRestDay) {
-            html += `<div class="push-sets-list"><span class="set-chip ${state.status === 'done' ? 'checked' : ''}" onclick="toggleRestDay(${dayIdx})">Valider le repos</span></div>`;
+            html += `<div class="push-sets-list"><span class="set-chip ${stateItem.status === 'done' ? 'checked' : ''}" onclick="toggleRestDay(${dayIdx})">Valider le repos</span></div>`;
         } else {
             dayData.ex.forEach((ex, exIdx) => {
                 html += `<div class="ex-title">Ex: ${ex.name} - Repos ${ex.rest}s</div><div class="push-sets-list">`;
                 for(let i = 0; i < ex.sets; i++) {
-                   const isDone = state.setsDone[exIdx][i];
+                   const isDone = stateItem.setsDone[exIdx][i];
                    html += `<span class="set-chip ${isDone ? 'checked' : ''}" onclick="toggleSet(${dayIdx}, ${exIdx}, ${i}, ${ex.rest})">${ex.reps} ${ex.reps.includes('AMRAP')?'':'reps'}</span>`;
                 }
                 html += `</div>`;
             });
         }
         
-        if (state.status === 'done' && !dayData.isRestDay) {
+        if (stateItem.status === 'done' && !dayData.isRestDay) {
             html += `<div class="feedback-bar">
-                <span style="font-size:0.65rem; color:var(--text-sec);">Difficulté : ${state.feedback || 'Non notée'}</span>
-                ${!state.feedback ? `
+                <span style="font-size:0.65rem; color:var(--text-sec);">Difficulté : ${stateItem.feedback || 'Non notée'}</span>
+                ${!stateItem.feedback ? `
                     <div class="fb-row">
                       <button class="fb-btn green" onclick="rateDay(${dayIdx}, 'Facile')">Facile</button>
                       <button class="fb-btn purple" onclick="rateDay(${dayIdx}, 'OK')">OK</button>
@@ -805,11 +870,10 @@
       setTimeout(() => { const activeEl = document.querySelector('.active-day'); if(activeEl) activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 100);
     }
 
-    /* DECOMPTE REPOS VOCAL SPECIFIQUE : "Fin du repos dans 5, 4, 3, 2, 1, Go !" */
-    let restInterval; let restSecondsLeft = 0;
+    let restInterval; let restSecondsLeft = 0; let routeRestSpoken = false;
     function startRestTimer(secs) {
       if(secs <= 0) return;
-      restSecondsLeft = secs;
+      restSecondsLeft = secs; routeRestSpoken = false;
       const banner = document.getElementById('restTimerBanner');
       const display = document.getElementById('restTimerDisplay');
       banner.classList.add('visible'); 
@@ -819,7 +883,8 @@
       restInterval = setInterval(() => {
           restSecondsLeft--;
           
-          if (restSecondsLeft === 5) {
+          if (restSecondsLeft === 5 && !routeRestSpoken) {
+            routeRestSpoken = true;
             speak("Fin du repos dans 5, 4, 3, 2, 1, Go");
           }
           
@@ -836,28 +901,27 @@
     }
 
     function toggleSet(dayIdx, exIdx, setIdx, restSecs) {
-      const state = pushProgState[dayIdx];
-      state.setsDone[exIdx][setIdx] = !state.setsDone[exIdx][setIdx];
+      const stateItem = state.pushProgState[dayIdx];
+      stateItem.setsDone[exIdx][setIdx] = !stateItem.setsDone[exIdx][setIdx];
       
-      const wasDone = (state.status === 'done');
-      const isAllDone = state.setsDone.every(exSets => exSets.every(Boolean));
+      const wasDone = (stateItem.status === 'done');
+      const isAllDone = stateItem.setsDone.every(exSets => exSets.every(Boolean));
       
-      if(state.setsDone[exIdx][setIdx] && !isAllDone && restSecs > 0) startRestTimer(restSecs);
+      if(stateItem.setsDone[exIdx][setIdx] && !isAllDone && restSecs > 0) startRestTimer(restSecs);
       else endRestTimer(true);
 
       if (isAllDone && !wasDone) {
-        state.status = 'done';
+        stateItem.status = 'done';
         triggerVibration([150, 100, 150]); playSound('success'); triggerFX('confetti');
         logRouteDayCompletion(dayIdx + 1);
       } else if (!isAllDone) {
-        state.status = 'pending'; state.feedback = null;
+        stateItem.status = 'pending'; stateItem.feedback = null;
       }
 
       saveProgState(); renderPushProgram();
     }
 
     function logRouteDayCompletion(dayNum) {
-      const routeHistory = JSON.parse(localStorage.getItem('routeHistory')) || [];
       const todayStr = new Date().toISOString().split('T')[0];
       const dayData = program40Days[dayNum - 1];
       
@@ -868,31 +932,30 @@
         summary = `Jour ${dayNum} : Repos validé`;
       }
       
-      routeHistory.push({ date: todayStr, day: dayNum, summary: summary });
-      localStorage.setItem('routeHistory', JSON.stringify(routeHistory));
+      state.routeHistory.push({ date: todayStr, day: dayNum, summary: summary });
+      saveLocalState();
     }
 
     function toggleRestDay(dayIdx) {
-      pushProgState[dayIdx].status = 'done';
-      if(currentTargetDay === dayIdx + 1) currentTargetDay = Math.min(40, currentTargetDay + 1);
+      state.pushProgState[dayIdx].status = 'done';
+      if(state.pushTargetDay === dayIdx + 1) state.pushTargetDay = Math.min(40, state.pushTargetDay + 1);
       logRouteDayCompletion(dayIdx + 1);
       saveProgState(); renderPushProgram();
     }
 
     function rateDay(dayIdx, rating) {
-      pushProgState[dayIdx].feedback = rating;
+      state.pushProgState[dayIdx].feedback = rating;
       
-      if (rating === 'Facile') currentTargetDay = Math.min(40, currentTargetDay + 2); 
-      else if (rating === 'OK') currentTargetDay = Math.min(40, currentTargetDay + 1);
-      else if (rating === 'Difficile') currentTargetDay = Math.max(1, dayIdx);
+      if (rating === 'Facile') state.pushTargetDay = Math.min(40, state.pushTargetDay + 2); 
+      else if (rating === 'OK') state.pushTargetDay = Math.min(40, state.pushTargetDay + 1);
+      else if (rating === 'Difficile') state.pushTargetDay = Math.max(1, dayIdx);
       
-      if (currentTargetDay > 20 && currentPhase === 1) switchPhase(2);
+      if (state.pushTargetDay > 20 && currentPhase === 1) switchPhase(2);
       saveProgState(); renderPushProgram();
     }
 
     function saveProgState() {
-      localStorage.setItem('pushProgState', JSON.stringify(pushProgState));
-      localStorage.setItem('pushTargetDay', currentTargetDay);
+      saveLocalState();
       syncCloudFirestore();
     }
 
@@ -905,10 +968,9 @@
     function savePushSession() {
       if (currentPushCount === 0) return;
       const maxBefore = getPushRecord();
-      const pushupHistory = JSON.parse(localStorage.getItem('pushupHistory')) || [];
       const todayStr = new Date().toISOString().split('T')[0];
-      pushupHistory.push({ date: todayStr, count: currentPushCount, type: "manual" });
-      localStorage.setItem('pushupHistory', JSON.stringify(pushupHistory));
+      state.pushupHistory.push({ date: todayStr, count: currentPushCount, type: "manual", variant: selectedPushVariant });
+      saveLocalState();
       
       if (currentPushCount > maxBefore) { triggerVibration([300, 150, 300]); playSound('record'); triggerFX('fireworks'); speak("Nouveau record !"); } 
       else { triggerVibration([100, 50, 100]); playSound('success'); triggerFX('confetti'); }
@@ -923,8 +985,8 @@
       document.getElementById('dashPushRecord').innerText = `${maxRecord} réps`;
       document.getElementById('pushProgressBar').style.width = `${Math.min((maxRecord / 100) * 100, 100)}%`;
 
-      const pushupHistory = JSON.parse(localStorage.getItem('pushupHistory')) || [];
-      const dailyMap = {}; pushupHistory.forEach(item => { dailyMap[item.date] = (dailyMap[item.date] || 0) + item.count; });
+      const dailyMap = {}; 
+      state.pushupHistory.forEach(item => { dailyMap[item.date] = (dailyMap[item.date] || 0) + item.count; });
       updatePushupChart(dailyMap);
     }
 
@@ -940,10 +1002,8 @@
 
     /* ================= GESTION DES 52 TROPHÉES & DATES ================= */
     function getAllBadgesStatus() {
-      const plankHistory = JSON.parse(localStorage.getItem('planksHistory')) || [];
-      const pushupHistory = JSON.parse(localStorage.getItem('pushupHistory')) || [];
-      const freeSessions = plankHistory.filter(h => h.variant !== 'Tabata' && h.type !== 'tabata');
-      const totalPlankSecs = plankHistory.reduce((acc, h) => acc + h.seconds, 0);
+      const freeSessions = state.planksHistory.filter(h => h.variant !== 'Tabata' && h.type !== 'tabata');
+      const totalPlankSecs = state.planksHistory.reduce((acc, h) => acc + h.seconds, 0);
       const maxPush = getPushRecord();
       const streak = calculateStreak();
 
@@ -951,7 +1011,7 @@
 
       const now = new Date();
       let weekSecs = 0, monthSecs = 0;
-      const dailyMap = {}; plankHistory.forEach(item => { dailyMap[item.date] = (dailyMap[item.date] || 0) + item.seconds; });
+      const dailyMap = {}; state.planksHistory.forEach(item => { dailyMap[item.date] = (dailyMap[item.date] || 0) + item.seconds; });
       Object.keys(dailyMap).forEach(dStr => {
         const dObj = new Date(dStr);
         const diffDays = Math.ceil(Math.abs(now - dObj) / (1000 * 60 * 60 * 24));
@@ -963,10 +1023,10 @@
         const allDates = Object.keys(dailyMap).sort();
         for(let dStr of allDates) {
           let cumSecs = 0;
-          for(let h of plankHistory) {
+          for(let h of state.planksHistory) {
             if(h.date <= dStr) cumSecs += h.seconds;
           }
-          if(checkFn({ cumSecs, maxPush, streak, weekSecs, monthSecs, freeSessions, plankHistory, pushupHistory })) {
+          if(checkFn({ cumSecs, maxPush, streak, weekSecs, monthSecs, freeSessions })) {
             return dStr;
           }
         }
@@ -1009,7 +1069,7 @@
       for(let i=1; i<=10; i++) {
         const reps = i * 10;
         const u = maxPush >= reps;
-        const pMatch = pushupHistory.find(h => h.count >= reps);
+        const pMatch = state.pushupHistory.find(h => h.count >= reps);
         badges.push({ icon: '💪', title: `Force ${i}`, desc: `Atteindre ${reps} reps`, unlocked: u, date: u && pMatch ? pMatch.date : null });
       }
 
@@ -1017,10 +1077,10 @@
         { day: 10, label: 'Route J10' }, { day: 20, label: 'Route J20' }, { day: 30, label: 'Route J30' }, { day: 40, label: 'Route J40' }
       ];
       routeMilestones.forEach(m => {
-        const isDone = pushProgState[m.day - 1] && pushProgState[m.day - 1].status === 'done';
+        const isDone = state.pushProgState[m.day - 1] && state.pushProgState[m.day - 1].status === 'done';
         badges.push({ icon: '🗺️', title: m.label, desc: `Valider Jour ${m.day}`, unlocked: isDone, date: isDone ? '2026-09-26' : null });
       });
-      const allRouteDone = pushProgState.every((st, idx) => program40Days[idx].isRestDay || st.status === 'done');
+      const allRouteDone = state.pushProgState.every((st, idx) => program40Days[idx].isRestDay || st.status === 'done');
       badges.push({ icon: '👑', title: 'Maître de la Route', desc: '40 jours validés', unlocked: allRouteDone, date: allRouteDone ? '2026-09-26' : null });
 
       for(let i=1; i<=15; i++) {
@@ -1063,14 +1123,9 @@
       const firstDayIndex = (new Date(year, month, 1).getDay() + 6) % 7; 
       const totalDays = new Date(year, month + 1, 0).getDate();
 
-      const plankHistory = JSON.parse(localStorage.getItem('planksHistory')) || [];
-      const pushupHistory = JSON.parse(localStorage.getItem('pushupHistory')) || [];
-      const routeHistory = JSON.parse(localStorage.getItem('routeHistory')) || [];
-      
       const activeDatesMap = {};
       
-      // Planks & Tabata
-      plankHistory.forEach(h => {
+      state.planksHistory.forEach(h => {
         if(!activeDatesMap[h.date]) activeDatesMap[h.date] = [];
         if (h.type === 'tabata' || h.variant === 'Tabata') {
           activeDatesMap[h.date].push(`🔥 Tabata : ${h.work||20}s effort / ${h.rest||10}s repos (${h.cycles||8} cycles)`);
@@ -1079,14 +1134,12 @@
         }
       });
 
-      // Pompes formaté proprement
-      pushupHistory.forEach(h => {
+      state.pushupHistory.forEach(h => {
         if(!activeDatesMap[h.date]) activeDatesMap[h.date] = [];
         activeDatesMap[h.date].push(`💪 Pompes Libres : ${h.count} reps (${h.variant||'Standard'})`);
       });
 
-      // Feuille de route formatée avec rappel de la session
-      routeHistory.forEach(h => {
+      state.routeHistory.forEach(h => {
         if(!activeDatesMap[h.date]) activeDatesMap[h.date] = [];
         activeDatesMap[h.date].push(`🗺️ Feuille de Route : ${h.summary || 'Validé'}`);
       });
@@ -1139,34 +1192,25 @@
     }
 
     function exportToCSV() {
-      const plankHistory = JSON.parse(localStorage.getItem('planksHistory')) || [];
-      const pushupHistory = JSON.parse(localStorage.getItem('pushupHistory')) || [];
-      const routeHistory = JSON.parse(localStorage.getItem('routeHistory')) || [];
-      
       let csvContent = "data:text/csv;charset=utf-8,Date,Activite,Variante_ou_Detail,Valeur\n";
-      plankHistory.forEach(h => { csvContent += `${h.date},Planks,${h.variant || 'Standard'},${h.seconds}s\n`; });
-      pushupHistory.forEach(h => { csvContent += `${h.date},Push-pull,${h.variant || 'Standard'},${h.count}\n`; });
-      routeHistory.forEach(h => { csvContent += `${h.date},FeuilleDeRoute,Jour_${h.day},"${h.summary}"\n`; });
+      state.planksHistory.forEach(h => { csvContent += `${h.date},Planks,${h.variant || 'Standard'},${h.seconds}s\n`; });
+      state.pushupHistory.forEach(h => { csvContent += `${h.date},Push-pull,${h.variant || 'Standard'},${h.count}\n`; });
+      state.routeHistory.forEach(h => { csvContent += `${h.date},FeuilleDeRoute,Jour_${h.day},"${h.summary}"\n`; });
       
       const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent));
       link.setAttribute("download", "core_push_export.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
     }
 
     function triggerBackup() {
-      const plankHistory = JSON.parse(localStorage.getItem('planksHistory')) || [];
-      const pushupHistory = JSON.parse(localStorage.getItem('pushupHistory')) || [];
-      const routeHistory = JSON.parse(localStorage.getItem('routeHistory')) || [];
-      
-      navigator.clipboard.writeText(JSON.stringify({ plankHistory, pushupHistory, routeHistory })).then(() => alert("Code de secours copié !"));
+      navigator.clipboard.writeText(JSON.stringify({ 
+        planksHistory: state.planksHistory, 
+        pushupHistory: state.pushupHistory, 
+        routeHistory: state.routeHistory 
+      })).then(() => alert("Code de secours copié !"));
     }
 
     // Init All on Load
-    updatePlankStats(); 
-    updatePushupStats(); 
-    renderPushProgram(); 
-    calculateStreak();
-    renderBadges();
-    renderCalendar();
+    refreshAllUI();
   </script>
 </body>
 </html>

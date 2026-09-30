@@ -174,7 +174,6 @@
     .stats-text { display: flex; justify-content: space-between; color: var(--text-sec); font-size: 0.7rem; margin-top: 4px; font-weight: 500; }
     .chart-container { position: relative; height: 150px; width: 100%; margin-top: 6px; }
 
-    /* Modification des Trophées pour gérer les catégories */
     .badges-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px; }
     .badge-card { background: var(--surface-bright); border-radius: 14px; padding: 10px; text-align: center; border: 1px solid rgba(255,255,255,0.04); opacity: 0.35; display: flex; flex-direction: column; justify-content: center; }
     .badge-card.unlocked { opacity: 1; border-color: var(--primary); background: rgba(79, 55, 139, 0.25); }
@@ -348,7 +347,6 @@
       <h3>🏆 Hall des 52 Trophées</h3>
       <p style="font-size:0.65rem; color:var(--text-sec); margin-top:0; margin-bottom:10px;">Vos accomplissements débloqués au fil du temps.</p>
       
-      <!-- ÉVOLUTION 4 : Trophées catégorisés -->
       <div id="badgesContainer" style="max-height: 450px; overflow-y: auto; padding-right: 4px;"></div>
     </div>
   </div>
@@ -387,8 +385,6 @@
       </p>
       <div style="display: flex; gap: 8px; margin-top: 10px;">
         <button class="btn-primary" onclick="exportToCSV()">Exporter CSV</button>
-        
-        <!-- ÉVOLUTION 1 : Bouton et Input Import CSV -->
         <button class="btn-sec" onclick="document.getElementById('csvImportInput').click()">Importer CSV</button>
         <input type="file" id="csvImportInput" accept=".csv" style="display:none" onchange="importCSV(event)">
       </div>
@@ -397,14 +393,12 @@
 
 
   <script>
-    /* ================= ÉVOLUTION 2 : GESTION DES FUSEAUX HORAIRES LOCAUX ================= */
-    // Empêche les décalages d'enregistrement dus à l'heure universelle UTC (ex: 23h en France = veille en UTC)
     function getLocalIsoDate(dateObj = new Date()) {
       const offset = dateObj.getTimezoneOffset() * 60000;
       return new Date(dateObj.getTime() - offset).toISOString().split('T')[0];
     }
 
-    /* ================= ÉTAT CENTRALISÉ & FIREBASE CLOUD ================= */
+    /* ================= ÉTAT CENTRALISÉ & FIREBASE CLOUD (Multi-appareils) ================= */
     const firebaseConfig = {
       apiKey: "AIzaSyCrZOBTMn8n1KgoZ9xvQtT7hFRT6Zoxfro",
       authDomain: "corepushpro.firebaseapp.com",
@@ -449,23 +443,35 @@
       db = firebase.firestore();
       db.enablePersistence().catch(() => {});
 
-      auth.signInAnonymously().catch(err => console.error("Auth anonyme erreur:", err));
-
       auth.onAuthStateChanged(user => {
         if (user) {
           currentUserId = user.uid;
+          document.getElementById('btnCloud').innerHTML = "☁️ Cloud"; 
+          
           db.collection("historique").doc(currentUserId).onSnapshot(doc => {
             if (doc.exists) {
               const cloudData = doc.data();
               if (cloudData.planks) mergePlanks(cloudData.planks);
               if (cloudData.pushups) mergePushups(cloudData.pushups);
               if (cloudData.routeProgress) mergeRoute(cloudData.routeProgress);
-              if (cloudData.pushProgState) state.pushProgState = cloudData.pushProgState;
+              
+              // FIX: Conversion sécurisée pour contourner l'erreur invalid-argument des tableaux imbriqués
+              if (cloudData.pushProgState) {
+                try {
+                  state.pushProgState = typeof cloudData.pushProgState === 'string' 
+                    ? JSON.parse(cloudData.pushProgState) 
+                    : cloudData.pushProgState;
+                } catch(e) {}
+              }
               if (cloudData.pushTargetDay) state.pushTargetDay = Math.max(state.pushTargetDay, cloudData.pushTargetDay);
+              
               saveLocalState();
               refreshAllUI();
             }
           }, err => console.error("Erreur sync temps réel:", err));
+        } else {
+           // Connexion anonyme par défaut pour l'utilisation initiale (hors compte lié)
+           auth.signInAnonymously().catch(err => console.error("Auth anonyme erreur:", err));
         }
       });
     } catch (e) {
@@ -499,6 +505,22 @@
     async function syncCloudFirestore(isManual = false) {
       const btn = document.getElementById('btnCloud');
       if (!db) { if(isManual) btn.innerHTML = "❌ NoDB"; return; }
+      
+      // CONNEXION GOOGLE (MULTI-APPAREILS) LORS DU CLIC MANUEL
+      if (isManual && auth.currentUser && auth.currentUser.isAnonymous) {
+          try {
+              btn.innerHTML = "🔄 Login...";
+              const provider = new firebase.auth.GoogleAuthProvider();
+              const result = await auth.signInWithPopup(provider);
+              currentUserId = result.user.uid; 
+              // Vos données locales seront ensuite fusionnées avec le profil Google
+          } catch (err) {
+              console.error("Erreur Google Auth:", err);
+              btn.innerHTML = "❌ Auth";
+              return;
+          }
+      }
+
       if (!currentUserId) { if(isManual) btn.innerHTML = "❌ NoAuth"; return; }
 
       if(isManual) btn.innerHTML = "🔄 Sync...";
@@ -508,7 +530,8 @@
           planks: state.planksHistory,
           pushups: state.pushupHistory,
           routeProgress: state.routeHistory,
-          pushProgState: state.pushProgState,
+          // FIX : On convertit la feuille de route complexe en texte pour éviter l'erreur Firebase
+          pushProgState: JSON.stringify(state.pushProgState), 
           pushTargetDay: state.pushTargetDay,
           source: "Web App"
         }, { merge: true });
@@ -650,7 +673,7 @@
       clearInterval(interval); isStandardRunning = false; document.getElementById('medalRing').classList.remove('active');
       
       const maxBefore = getPlankRecord();
-      const todayStr = getLocalIsoDate(); // Application correction fuseau horaire
+      const todayStr = getLocalIsoDate();
       state.planksHistory.push({ date: todayStr, seconds: standardSecs, variant: selectedPlankVariant, type: "free" });
       saveLocalState();
 
@@ -685,7 +708,6 @@
       const restDur = parseInt(document.getElementById('restInput').value) || 10;
       document.getElementById('workInput').disabled = true; document.getElementById('restInput').disabled = true;
 
-      // ÉVOLUTION 3 : La préparation du Tabata est fixée à 10 secondes
       isTabataRunning = true; tabataPhase = 'prep'; tabataCycle = 1; tabataTimeLeft = 10; tabataRestSpoken = false;
       document.getElementById('tabataBtn').innerText = 'Stopper'; speak("Préparez-vous"); updateTabataDisplay();
 
@@ -724,7 +746,7 @@
       
       const totalSecs = 8 * workDur;
       state.planksHistory.push({
-        date: getLocalIsoDate(), // Application correction fuseau horaire
+        date: getLocalIsoDate(),
         seconds: totalSecs,
         variant: 'Tabata',
         type: 'tabata',
@@ -927,7 +949,7 @@
     }
 
     function logRouteDayCompletion(dayNum) {
-      const todayStr = getLocalIsoDate(); // Application correction fuseau horaire
+      const todayStr = getLocalIsoDate();
       const dayData = program40Days[dayNum - 1];
       
       let summary = `Jour ${dayNum} de la feuille de route validé !`;
@@ -973,7 +995,7 @@
     function savePushSession() {
       if (currentPushCount === 0) return;
       const maxBefore = getPushRecord();
-      const todayStr = getLocalIsoDate(); // Application correction fuseau horaire
+      const todayStr = getLocalIsoDate();
       state.pushupHistory.push({ date: todayStr, count: currentPushCount, type: "manual", variant: selectedPushVariant });
       saveLocalState();
       
@@ -1005,7 +1027,7 @@
       });
     }
 
-    /* ================= ÉVOLUTION 4 : Trophées organisés avec catégories ================= */
+    /* ================= TROPHÉES ================= */
     function getAllBadgesStatus() {
       const freeSessions = state.planksHistory.filter(h => h.variant !== 'Tabata' && h.type !== 'tabata');
       const totalPlankSecs = state.planksHistory.reduce((acc, h) => acc + h.seconds, 0);
@@ -1036,7 +1058,7 @@
 
       const badges = [];
 
-      // Catégorie : Gainage
+      // Gainage
       for(let i=1; i<=6; i++) {
         const targetMin = i * 5; const u = totalPlankSecs >= targetMin * 60;
         badges.push({ category: 'Gainage', icon: '🧱', title: `Maçon ${i}`, desc: `Cumuler ${targetMin} min`, unlocked: u, date: u ? findDateForCondition(s => s.cumSecs >= targetMin * 60) : null });
@@ -1047,18 +1069,18 @@
         badges.push({ category: 'Gainage', icon: '🏆', title: titleName, desc: `Cumuler ${mins} min`, unlocked: u, date: u ? findDateForCondition(s => s.cumSecs >= mins * 60) : null });
       }
 
-      // Catégorie : Variantes
+      // Variantes
       let uLat = countVariant('Latérale') >= 5; badges.push({ category: 'Variantes', icon: '📐', title: 'Maçon Spécialiste', desc: '5x Gainage Latérale', unlocked: uLat, date: uLat ? '2026-09-24' : null });
       let uOurs = countVariant('Ours') >= 5; badges.push({ category: 'Variantes', icon: '🐾', title: 'Maçon Quadrupède', desc: '5x Gainage Ours', unlocked: uOurs, date: uOurs ? '2026-09-24' : null });
       let uSup = countVariant('Superman') >= 5; badges.push({ category: 'Variantes', icon: '🦸', title: 'Maçon Aérien', desc: '5x Gainage Superman', unlocked: uSup, date: uSup ? '2026-09-24' : null });
 
-      // Catégorie : Push-pull
+      // Push-pull
       for(let i=1; i<=10; i++) {
         const reps = i * 10; const u = maxPush >= reps; const pMatch = state.pushupHistory.find(h => h.count >= reps);
         badges.push({ category: 'Push-pull', icon: '💪', title: `Force ${i}`, desc: `Atteindre ${reps} reps`, unlocked: u, date: u && pMatch ? pMatch.date : null });
       }
 
-      // Catégorie : Feuille de Route
+      // Feuille de Route
       const routeMilestones = [ { day: 10, label: 'Route J10' }, { day: 20, label: 'Route J20' }, { day: 30, label: 'Route J30' }, { day: 40, label: 'Route J40' } ];
       routeMilestones.forEach(m => {
         const isDone = state.pushProgState[m.day - 1] && state.pushProgState[m.day - 1].status === 'done';
@@ -1067,7 +1089,7 @@
       const allRouteDone = state.pushProgState.every((st, idx) => program40Days[idx].isRestDay || st.status === 'done');
       badges.push({ category: 'Feuille de Route', icon: '👑', title: 'Maître de la Route', desc: '40 jours validés', unlocked: allRouteDone, date: allRouteDone ? '2026-09-26' : null });
 
-      // Catégorie : Assiduité
+      // Assiduité
       let uReg = freeSessions.length >= 10; badges.push({ category: 'Assiduité', icon: '🔁', title: 'Maçon Régulier', desc: '10 sessions', unlocked: uReg, date: uReg ? '2026-09-25' : null });
       let uAcier = freeSessions.length >= 20; badges.push({ category: 'Assiduité', icon: '🛡️', title: 'Maçon d\'Acier', desc: '20 sessions', unlocked: uAcier, date: uAcier ? '2026-09-26' : null });
       for(let i=1; i<=15; i++) {
@@ -1075,7 +1097,7 @@
         badges.push({ category: 'Assiduité', icon: '🔥', title: `Flamme ${i}`, desc: `Série de ${i} jours`, unlocked: u, date: u ? '2026-09-26' : null });
       }
 
-      // Catégorie : Jalons Spéciaux
+      // Jalons Spéciaux
       badges.push({ category: 'Jalons Spéciaux', icon: '⏱️', title: 'Gainage 2 min', desc: 'Séance >= 2 min', unlocked: freeSessions.some(h=>h.seconds>=120), date: freeSessions.some(h=>h.seconds>=120) ? freeSessions.find(h=>h.seconds>=120).date : null });
       badges.push({ category: 'Jalons Spéciaux', icon: '🧱', title: 'Gainage 3 min', desc: 'Séance >= 3 min', unlocked: freeSessions.some(h=>h.seconds>=180), date: freeSessions.some(h=>h.seconds>=180) ? freeSessions.find(h=>h.seconds>=180).date : null });
       badges.push({ category: 'Jalons Spéciaux', icon: '⚡', title: 'Gainage 4 min', desc: 'Séance >= 4 min', unlocked: freeSessions.some(h=>h.seconds>=240), date: freeSessions.some(h=>h.seconds>=240) ? freeSessions.find(h=>h.seconds>=240).date : null });
@@ -1098,7 +1120,6 @@
         const catBadges = badges.filter(b => b.category === cat);
         if(catBadges.length === 0) return;
 
-        // Sous-titre propre pour chaque catégorie
         const catTitle = document.createElement('h4');
         catTitle.style.cssText = "width: 100%; color: var(--primary); margin: 15px 0 8px 0; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px; font-size: 0.85rem; text-align: left;";
         catTitle.innerText = cat;
@@ -1118,7 +1139,7 @@
       });
     }
 
-    /* ================= MODULE 4 : CALENDRIER & IMPORT/EXPORT CSV ================= */
+    /* ================= CALENDRIER & CSV ================= */
     let calCurrentDate = new Date();
     function changeMonth(dir) { calCurrentDate.setMonth(calCurrentDate.getMonth() + dir); renderCalendar(); }
 
@@ -1209,7 +1230,6 @@
       link.setAttribute("download", "core_push_export.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
     }
 
-    /* ================= ÉVOLUTION 1 : Fonction d'importation CSV ================= */
     function importCSV(event) {
       const file = event.target.files[0];
       if (!file) return;

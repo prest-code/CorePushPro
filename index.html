@@ -204,7 +204,7 @@
   <div id="fxOverlay"></div>
   
   <div id="restTimerBanner" class="rest-banner">
-     <span>⏱️ Repos : <strong id="restTimerDisplay">00:00</strong></span>
+     <span>⏱️️ Repos : <strong id="restTimerDisplay">00:00</strong></span>
      <button onclick="endRestTimer(true)">Passer</button>
   </div>
 
@@ -263,14 +263,23 @@
       </div>
     </div>
 
-    <div class="goals-grid">
+    <!-- Évolution : Objectif semaine strict -->
+    <div class="goals-grid" style="grid-template-columns: 1fr;">
       <div class="goal-box">
-        <span>Objectif Semaine</span>
+        <span>Objectif Semaine (Réinitialisé le Lundi)</span>
         <strong id="weekGoalText">0 / 15 min</strong>
       </div>
-      <div class="goal-box">
-        <span>Objectif Mensuel</span>
-        <strong id="globalGoalText">0 / 60 min</strong>
+    </div>
+    
+    <!-- Évolution : Objectif mensuel en mode Barre de progression -->
+    <div class="card">
+      <h3>Objectif Mensuel (Gainage)</h3>
+      <div class="progress-container">
+        <div class="progress-bar" id="plankProgressBar"></div>
+      </div>
+      <div class="stats-text">
+        <span>Cumul : <strong id="plankMonthText">0</strong> min</span>
+        <span>Cible : 60 min</span>
       </div>
     </div>
 
@@ -310,6 +319,18 @@
 
       <div style="margin-top: 10px;">
         <button class="btn-primary" style="width: 100%;" onclick="savePushSession()">Enregistrer la série</button>
+      </div>
+    </div>
+
+    <!-- Évolution : Objectifs Semaine et Mensuel Push-Pull -->
+    <div class="goals-grid">
+      <div class="goal-box">
+        <span>Objectif Semaine</span>
+        <strong id="pushWeekGoalText">0 / 140 reps</strong>
+      </div>
+      <div class="goal-box">
+        <span>Objectif Mensuel</span>
+        <strong id="pushMonthGoalText">0 / 450 reps</strong>
       </div>
     </div>
 
@@ -393,12 +414,31 @@
 
 
   <script>
+    /* ================= GESTION DES DATES & CALENDRIER STRICT ================= */
     function getLocalIsoDate(dateObj = new Date()) {
       const offset = dateObj.getTimezoneOffset() * 60000;
       return new Date(dateObj.getTime() - offset).toISOString().split('T')[0];
     }
+    
+    function getISOWeekString(dStr) {
+      let d = new Date(dStr);
+      d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+      d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
+      let yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+      let weekNo = Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+      return d.getUTCFullYear() + '-W' + weekNo;
+    }
 
-    /* ================= ÉTAT CENTRALISÉ & FIREBASE CLOUD (Multi-appareils) ================= */
+    function isCurrentWeek(dStr) {
+      return getISOWeekString(dStr) === getISOWeekString(new Date());
+    }
+
+    function isCurrentMonth(dStr) {
+      const d = new Date(dStr); const now = new Date();
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    }
+
+    /* ================= ÉTAT CENTRALISÉ & FIREBASE CLOUD ================= */
     const firebaseConfig = {
       apiKey: "AIzaSyCrZOBTMn8n1KgoZ9xvQtT7hFRT6Zoxfro",
       authDomain: "corepushpro.firebaseapp.com",
@@ -455,7 +495,6 @@
               if (cloudData.pushups) mergePushups(cloudData.pushups);
               if (cloudData.routeProgress) mergeRoute(cloudData.routeProgress);
               
-              // FIX: Conversion sécurisée pour contourner l'erreur invalid-argument des tableaux imbriqués
               if (cloudData.pushProgState) {
                 try {
                   state.pushProgState = typeof cloudData.pushProgState === 'string' 
@@ -470,7 +509,6 @@
             }
           }, err => console.error("Erreur sync temps réel:", err));
         } else {
-           // Connexion anonyme par défaut pour l'utilisation initiale (hors compte lié)
            auth.signInAnonymously().catch(err => console.error("Auth anonyme erreur:", err));
         }
       });
@@ -506,14 +544,12 @@
       const btn = document.getElementById('btnCloud');
       if (!db) { if(isManual) btn.innerHTML = "❌ NoDB"; return; }
       
-      // CONNEXION GOOGLE (MULTI-APPAREILS) LORS DU CLIC MANUEL
       if (isManual && auth.currentUser && auth.currentUser.isAnonymous) {
           try {
               btn.innerHTML = "🔄 Login...";
               const provider = new firebase.auth.GoogleAuthProvider();
               const result = await auth.signInWithPopup(provider);
               currentUserId = result.user.uid; 
-              // Vos données locales seront ensuite fusionnées avec le profil Google
           } catch (err) {
               console.error("Erreur Google Auth:", err);
               btn.innerHTML = "❌ Auth";
@@ -530,7 +566,6 @@
           planks: state.planksHistory,
           pushups: state.pushupHistory,
           routeProgress: state.routeHistory,
-          // FIX : On convertit la feuille de route complexe en texte pour éviter l'erreur Firebase
           pushProgState: JSON.stringify(state.pushProgState), 
           pushTargetDay: state.pushTargetDay,
           source: "Web App"
@@ -643,7 +678,8 @@
     /* ================= MODULE 1 : PLANKS & TABATA ================= */
     let interval = null; 
     let standardSecs = 0; let isStandardRunning = false; let isTabataRunning = false;
-    let tabataPhase = 'prep'; let tabataCycle = 1; let tabataTimeLeft = 10;
+    let freeChronoPhase = 'idle'; let freePrepTime = 5;
+    let tabataPhase = 'prep'; let tabataCycle = 1; let tabataTimeLeft = 5;
     let tabataRestSpoken = false;
 
     function updateStandardDisplay() {
@@ -658,19 +694,49 @@
 
     function toggleStandardTimer() {
       if (isTabataRunning) return;
-      if (isStandardRunning) {
-        clearInterval(interval); isStandardRunning = false;
+      
+      if (freeChronoPhase === 'work') {
+        clearInterval(interval); freeChronoPhase = 'idle'; isStandardRunning = false;
         document.getElementById('startBtn').innerText = 'Reprendre'; document.getElementById('medalRing').classList.remove('active');
+        document.getElementById('timerCard').className = 'card';
+        document.getElementById('timerLabel').innerText = "Chrono Libre (Pause)";
+      } else if (freeChronoPhase === 'prep') {
+        clearInterval(interval); freeChronoPhase = 'idle'; isStandardRunning = false;
+        document.getElementById('startBtn').innerText = 'Chrono Libre';
+        document.getElementById('timerCard').className = 'card';
+        document.getElementById('timerLabel').innerText = "Chrono Libre";
+        document.getElementById('display').innerText = "00:00";
       } else {
-        document.getElementById('timerCard').className = 'card'; document.getElementById('timerLabel').innerText = "Chrono Libre";
-        isStandardRunning = true; interval = setInterval(() => { standardSecs++; updateStandardDisplay(); }, 1000);
+        freeChronoPhase = 'prep'; freePrepTime = 5; isStandardRunning = true;
         document.getElementById('startBtn').innerText = 'Pause';
+        document.getElementById('timerCard').className = 'card mode-prep';
+        document.getElementById('timerLabel').innerText = `⚠️ DÉPART DANS 5s`;
+        document.getElementById('display').innerText = `00:05`;
+        speak("Préparez-vous");
+        
+        interval = setInterval(() => {
+          if (freeChronoPhase === 'prep') {
+            freePrepTime--;
+            document.getElementById('display').innerText = `00:0${freePrepTime}`;
+            document.getElementById('timerLabel').innerText = `⚠️ DÉPART DANS ${freePrepTime}s`;
+            
+            if (freePrepTime <= 0) {
+              freeChronoPhase = 'work';
+              triggerVibration([500]); speak("Go");
+              document.getElementById('timerCard').className = 'card mode-work';
+              document.getElementById('timerLabel').innerText = "Chrono Libre - Effort";
+              updateStandardDisplay();
+            }
+          } else if (freeChronoPhase === 'work') {
+            standardSecs++; updateStandardDisplay();
+          }
+        }, 1000);
       }
     }
 
     function saveStandardSession() {
       if (standardSecs === 0 || isTabataRunning) return;
-      clearInterval(interval); isStandardRunning = false; document.getElementById('medalRing').classList.remove('active');
+      clearInterval(interval); freeChronoPhase = 'idle'; isStandardRunning = false; document.getElementById('medalRing').classList.remove('active');
       
       const maxBefore = getPlankRecord();
       const todayStr = getLocalIsoDate();
@@ -685,6 +751,7 @@
       
       standardSecs = 0; updateStandardDisplay();
       document.getElementById('startBtn').innerText = 'Chrono Libre'; document.getElementById('timerCard').className = 'card'; 
+      document.getElementById('timerLabel').innerText = 'Chrono Libre';
       refreshAllUI(); syncCloudFirestore();
     }
 
@@ -708,7 +775,8 @@
       const restDur = parseInt(document.getElementById('restInput').value) || 10;
       document.getElementById('workInput').disabled = true; document.getElementById('restInput').disabled = true;
 
-      isTabataRunning = true; tabataPhase = 'prep'; tabataCycle = 1; tabataTimeLeft = 10; tabataRestSpoken = false;
+      // Tabata Prep passe de 10 à 5 secondes
+      isTabataRunning = true; tabataPhase = 'prep'; tabataCycle = 1; tabataTimeLeft = 5; tabataRestSpoken = false;
       document.getElementById('tabataBtn').innerText = 'Stopper'; speak("Préparez-vous"); updateTabataDisplay();
 
       interval = setInterval(() => {
@@ -765,12 +833,19 @@
       const dailyMap = {}; 
       state.planksHistory.forEach(item => { dailyMap[item.date] = (dailyMap[item.date] || 0) + item.seconds; });
 
-      const totalAllSecs = Object.values(dailyMap).reduce((a,b)=>a+b, 0);
-      document.getElementById('globalGoalText').innerText = `${Math.floor(totalAllSecs / 60)} / 60 min`;
-
-      const now = new Date(); let weekSecs = 0;
-      Object.keys(dailyMap).forEach(dStr => { if(Math.ceil(Math.abs(now - new Date(dStr)) / (1000 * 60 * 60 * 24)) <= 7) weekSecs += dailyMap[dStr]; });
+      let weekSecs = 0, monthSecs = 0;
+      Object.keys(dailyMap).forEach(dStr => { 
+        if(isCurrentWeek(dStr)) weekSecs += dailyMap[dStr]; 
+        if(isCurrentMonth(dStr)) monthSecs += dailyMap[dStr]; 
+      });
+      
+      // Objectif Semaine Stricte
       document.getElementById('weekGoalText').innerText = `${Math.floor(weekSecs / 60)} / 15 min`;
+      
+      // Objectif Mois Stricte (Barre de progression)
+      const monthMin = Math.floor(monthSecs / 60);
+      document.getElementById('plankMonthText').innerText = monthMin;
+      document.getElementById('plankProgressBar').style.width = `${Math.min((monthMin / 60) * 100, 100)}%`;
 
       document.getElementById('dashPlankRecord').innerText = `${getPlankRecord()} sec`;
       updatePlankChart(dailyMap); updateStandardDisplay();
@@ -1006,6 +1081,21 @@
       updatePushupStats(); calculateStreak(); syncCloudFirestore();
     }
 
+    /* Analyse intelligente des répétitions de la feuille de route */
+    function getRouteRepsForDay(dayNum) {
+        const dayData = program40Days[dayNum - 1];
+        if (!dayData || dayData.isRestDay) return 0;
+        let total = 0;
+        dayData.ex.forEach(ex => {
+            let match = String(ex.reps).match(/(\d+)/);
+            let repsPerSet = match ? parseInt(match[1]) : 0; 
+            if (!String(ex.reps).includes("AMRAP")) {
+                total += ex.sets * repsPerSet;
+            }
+        });
+        return total;
+    }
+
     function updatePushupStats() {
       const maxRecord = getPushRecord();
       document.getElementById('pushRecord').innerText = maxRecord;
@@ -1014,6 +1104,21 @@
 
       const dailyMap = {}; 
       state.pushupHistory.forEach(item => { dailyMap[item.date] = (dailyMap[item.date] || 0) + item.count; });
+      
+      // Ajout des répétitions validées dans la Feuille de Route aux objectifs et statistiques !
+      state.routeHistory.forEach(item => {
+          dailyMap[item.date] = (dailyMap[item.date] || 0) + getRouteRepsForDay(item.day);
+      });
+
+      let weekReps = 0, monthReps = 0;
+      Object.keys(dailyMap).forEach(dStr => { 
+        if(isCurrentWeek(dStr)) weekReps += dailyMap[dStr]; 
+        if(isCurrentMonth(dStr)) monthReps += dailyMap[dStr]; 
+      });
+      
+      document.getElementById('pushWeekGoalText').innerText = `${weekReps} / 140 reps`;
+      document.getElementById('pushMonthGoalText').innerText = `${monthReps} / 450 reps`;
+
       updatePushupChart(dailyMap);
     }
 
@@ -1036,14 +1141,11 @@
 
       const countVariant = (vName) => freeSessions.filter(h => h.variant === vName).length;
 
-      const now = new Date();
       let weekSecs = 0, monthSecs = 0;
       const dailyMap = {}; state.planksHistory.forEach(item => { dailyMap[item.date] = (dailyMap[item.date] || 0) + item.seconds; });
       Object.keys(dailyMap).forEach(dStr => {
-        const dObj = new Date(dStr);
-        const diffDays = Math.ceil(Math.abs(now - dObj) / (1000 * 60 * 60 * 24));
-        if(diffDays <= 7) weekSecs += dailyMap[dStr];
-        if(dObj.getMonth() === now.getMonth() && dObj.getFullYear() === now.getFullYear()) monthSecs += dailyMap[dStr];
+        if(isCurrentWeek(dStr)) weekSecs += dailyMap[dStr];
+        if(isCurrentMonth(dStr)) monthSecs += dailyMap[dStr];
       });
 
       function findDateForCondition(checkFn) {

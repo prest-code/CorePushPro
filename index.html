@@ -204,7 +204,7 @@
   <div id="fxOverlay"></div>
   
   <div id="restTimerBanner" class="rest-banner">
-     <span>⏱️️ Repos : <strong id="restTimerDisplay">00:00</strong></span>
+     <span>⏱ Repos : <strong id="restTimerDisplay">00:00</strong></span>
      <button onclick="endRestTimer(true)">Passer</button>
   </div>
 
@@ -263,7 +263,6 @@
       </div>
     </div>
 
-    <!-- Évolution : Objectif semaine strict -->
     <div class="goals-grid" style="grid-template-columns: 1fr;">
       <div class="goal-box">
         <span>Objectif Semaine (Réinitialisé le Lundi)</span>
@@ -271,7 +270,6 @@
       </div>
     </div>
     
-    <!-- Évolution : Objectif mensuel en mode Barre de progression -->
     <div class="card">
       <h3>Objectif Mensuel (Gainage)</h3>
       <div class="progress-container">
@@ -322,7 +320,6 @@
       </div>
     </div>
 
-    <!-- Évolution : Objectifs Semaine et Mensuel Push-Pull -->
     <div class="goals-grid">
       <div class="goal-box">
         <span>Objectif Semaine</span>
@@ -414,6 +411,33 @@
 
 
   <script>
+    /* ================= PASSAGE HEALTH CONNECT NATIF (CAPACITOR) ================= */
+    async function syncToHealthConnect(activityName, durationMinutes, caloriesEst = 10) {
+      try {
+        // Vérification si le plugin Capacitor Health est disponible sur l'appareil natif
+        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Health) {
+          const Health = window.Capacitor.Plugins.Health;
+          const availability = await Health.isAvailable();
+          if (availability.available) {
+            await Health.requestAuthorization({
+              write: ['workouts', 'active_calories_burned']
+            });
+            const now = new Date();
+            const startTime = new Date(now.getTime() - Math.max(1, durationMinutes) * 60000);
+            await Health.saveSample({
+              dataType: 'workouts',
+              startDate: startTime.toISOString(),
+              endDate: now.toISOString(),
+              workoutType: 'OTHER_WORKOUT',
+              title: `Core & Push Pro - ${activityName}`
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("Health Connect sync info:", err);
+      }
+    }
+
     /* ================= GESTION DES DATES & CALENDRIER STRICT ================= */
     function getLocalIsoDate(dateObj = new Date()) {
       const offset = dateObj.getTimezoneOffset() * 60000;
@@ -568,7 +592,7 @@
           routeProgress: state.routeHistory,
           pushProgState: JSON.stringify(state.pushProgState), 
           pushTargetDay: state.pushTargetDay,
-          source: "Web App"
+          source: "Mobile App"
         }, { merge: true });
         
         if(isManual) { btn.innerHTML = "☁️ OK"; setTimeout(() => btn.innerHTML = "☁️ Cloud", 3000); }
@@ -718,7 +742,7 @@
           if (freeChronoPhase === 'prep') {
             freePrepTime--;
             document.getElementById('display').innerText = `00:0${freePrepTime}`;
-            document.getElementById('timerLabel').innerText = `⚠️ DÉPART DANS ${freePrepTime}s`;
+            document.getElementById('timerLabel').innerText = `⚠️️ DÉPART DANS ${freePrepTime}s`;
             
             if (freePrepTime <= 0) {
               freeChronoPhase = 'work';
@@ -734,7 +758,7 @@
       }
     }
 
-    function saveStandardSession() {
+    async function saveStandardSession() {
       if (standardSecs === 0 || isTabataRunning) return;
       clearInterval(interval); freeChronoPhase = 'idle'; isStandardRunning = false; document.getElementById('medalRing').classList.remove('active');
       
@@ -742,6 +766,9 @@
       const todayStr = getLocalIsoDate();
       state.planksHistory.push({ date: todayStr, seconds: standardSecs, variant: selectedPlankVariant, type: "free" });
       saveLocalState();
+
+      // SYNCHRONISATION EN TEMPS RÉEL VERS HEALTH CONNECT
+      await syncToHealthConnect(`Gainage ${selectedPlankVariant}`, Math.ceil(standardSecs / 60));
 
       if (standardSecs > maxBefore) {
         triggerVibration([300, 150, 300, 150, 500]); playSound('record'); triggerFX('fireworks'); speak("Nouveau record personnel !");
@@ -775,7 +802,6 @@
       const restDur = parseInt(document.getElementById('restInput').value) || 10;
       document.getElementById('workInput').disabled = true; document.getElementById('restInput').disabled = true;
 
-      // Tabata Prep passe de 10 à 5 secondes
       isTabataRunning = true; tabataPhase = 'prep'; tabataCycle = 1; tabataTimeLeft = 5; tabataRestSpoken = false;
       document.getElementById('tabataBtn').innerText = 'Stopper'; speak("Préparez-vous"); updateTabataDisplay();
 
@@ -807,7 +833,7 @@
       }, 1000);
     }
 
-    function endTabata(workDur, restDur) {
+    async function endTabata(workDur, restDur) {
       clearInterval(interval); isTabataRunning = false;
       document.getElementById('workInput').disabled = false; document.getElementById('restInput').disabled = false;
       document.getElementById('tabataBtn').innerText = 'Lancer Tabata (x8)'; document.getElementById('timerCard').className = 'card'; 
@@ -824,6 +850,9 @@
       });
       saveLocalState();
       
+      // SYNCHRONISATION EN TEMPS RÉEL VERS HEALTH CONNECT
+      await syncToHealthConnect("Tabata Gainage", Math.ceil(totalSecs / 60));
+
       triggerVibration([500, 200, 500]); playSound('tabata'); triggerFX('confetti'); speak("Tabata terminé !");
       document.getElementById('display').innerText = "00:00"; document.getElementById('timerLabel').innerText = `Tabata validé (+${totalSecs}s)`;
       refreshAllUI(); syncCloudFirestore();
@@ -839,10 +868,8 @@
         if(isCurrentMonth(dStr)) monthSecs += dailyMap[dStr]; 
       });
       
-      // Objectif Semaine Stricte
       document.getElementById('weekGoalText').innerText = `${Math.floor(weekSecs / 60)} / 15 min`;
       
-      // Objectif Mois Stricte (Barre de progression)
       const monthMin = Math.floor(monthSecs / 60);
       document.getElementById('plankMonthText').innerText = monthMin;
       document.getElementById('plankProgressBar').style.width = `${Math.min((monthMin / 60) * 100, 100)}%`;
@@ -1002,7 +1029,7 @@
       clearInterval(restInterval); document.getElementById('restTimerBanner').classList.remove('visible');
     }
 
-    function toggleSet(dayIdx, exIdx, setIdx, restSecs) {
+    async function toggleSet(dayIdx, exIdx, setIdx, restSecs) {
       const stateItem = state.pushProgState[dayIdx];
       stateItem.setsDone[exIdx][setIdx] = !stateItem.setsDone[exIdx][setIdx];
       
@@ -1016,6 +1043,9 @@
         stateItem.status = 'done';
         triggerVibration([150, 100, 150]); playSound('success'); triggerFX('confetti');
         logRouteDayCompletion(dayIdx + 1);
+        
+        // SYNCHRONISATION EN TEMPS RÉEL VERS HEALTH CONNECT (Feuille de route)
+        await syncToHealthConnect(`Feuille de Route J${dayIdx + 1}`, 15);
       } else if (!isAllDone) {
         stateItem.status = 'pending'; stateItem.feedback = null;
       }
@@ -1038,10 +1068,11 @@
       saveLocalState();
     }
 
-    function toggleRestDay(dayIdx) {
+    async function toggleRestDay(dayIdx) {
       state.pushProgState[dayIdx].status = 'done';
       if(state.pushTargetDay === dayIdx + 1) state.pushTargetDay = Math.min(40, state.pushTargetDay + 1);
       logRouteDayCompletion(dayIdx + 1);
+      await syncToHealthConnect(`Repos Feuille de Route J${dayIdx + 1}`, 5);
       saveProgState(); renderPushProgram();
     }
 
@@ -1067,13 +1098,16 @@
       document.getElementById('currentPushCount').innerText = currentPushCount; triggerVibration([25]);
     }
 
-    function savePushSession() {
+    async function savePushSession() {
       if (currentPushCount === 0) return;
       const maxBefore = getPushRecord();
       const todayStr = getLocalIsoDate();
       state.pushupHistory.push({ date: todayStr, count: currentPushCount, type: "manual", variant: selectedPushVariant });
       saveLocalState();
       
+      // SYNCHRONISATION EN TEMPS RÉEL VERS HEALTH CONNECT (Pompes)
+      await syncToHealthConnect(`Pompes ${selectedPushVariant} (${currentPushCount} reps)`, 5);
+
       if (currentPushCount > maxBefore) { triggerVibration([300, 150, 300]); playSound('record'); triggerFX('fireworks'); speak("Nouveau record !"); } 
       else { triggerVibration([100, 50, 100]); playSound('success'); triggerFX('confetti'); }
 
@@ -1081,7 +1115,6 @@
       updatePushupStats(); calculateStreak(); syncCloudFirestore();
     }
 
-    /* Analyse intelligente des répétitions de la feuille de route */
     function getRouteRepsForDay(dayNum) {
         const dayData = program40Days[dayNum - 1];
         if (!dayData || dayData.isRestDay) return 0;
@@ -1105,7 +1138,6 @@
       const dailyMap = {}; 
       state.pushupHistory.forEach(item => { dailyMap[item.date] = (dailyMap[item.date] || 0) + item.count; });
       
-      // Ajout des répétitions validées dans la Feuille de Route aux objectifs et statistiques !
       state.routeHistory.forEach(item => {
           dailyMap[item.date] = (dailyMap[item.date] || 0) + getRouteRepsForDay(item.day);
       });
@@ -1160,7 +1192,6 @@
 
       const badges = [];
 
-      // Gainage
       for(let i=1; i<=6; i++) {
         const targetMin = i * 5; const u = totalPlankSecs >= targetMin * 60;
         badges.push({ category: 'Gainage', icon: '🧱', title: `Maçon ${i}`, desc: `Cumuler ${targetMin} min`, unlocked: u, date: u ? findDateForCondition(s => s.cumSecs >= targetMin * 60) : null });
@@ -1171,18 +1202,15 @@
         badges.push({ category: 'Gainage', icon: '🏆', title: titleName, desc: `Cumuler ${mins} min`, unlocked: u, date: u ? findDateForCondition(s => s.cumSecs >= mins * 60) : null });
       }
 
-      // Variantes
       let uLat = countVariant('Latérale') >= 5; badges.push({ category: 'Variantes', icon: '📐', title: 'Maçon Spécialiste', desc: '5x Gainage Latérale', unlocked: uLat, date: uLat ? '2026-09-24' : null });
       let uOurs = countVariant('Ours') >= 5; badges.push({ category: 'Variantes', icon: '🐾', title: 'Maçon Quadrupède', desc: '5x Gainage Ours', unlocked: uOurs, date: uOurs ? '2026-09-24' : null });
       let uSup = countVariant('Superman') >= 5; badges.push({ category: 'Variantes', icon: '🦸', title: 'Maçon Aérien', desc: '5x Gainage Superman', unlocked: uSup, date: uSup ? '2026-09-24' : null });
 
-      // Push-pull
       for(let i=1; i<=10; i++) {
         const reps = i * 10; const u = maxPush >= reps; const pMatch = state.pushupHistory.find(h => h.count >= reps);
         badges.push({ category: 'Push-pull', icon: '💪', title: `Force ${i}`, desc: `Atteindre ${reps} reps`, unlocked: u, date: u && pMatch ? pMatch.date : null });
       }
 
-      // Feuille de Route
       const routeMilestones = [ { day: 10, label: 'Route J10' }, { day: 20, label: 'Route J20' }, { day: 30, label: 'Route J30' }, { day: 40, label: 'Route J40' } ];
       routeMilestones.forEach(m => {
         const isDone = state.pushProgState[m.day - 1] && state.pushProgState[m.day - 1].status === 'done';
@@ -1191,7 +1219,6 @@
       const allRouteDone = state.pushProgState.every((st, idx) => program40Days[idx].isRestDay || st.status === 'done');
       badges.push({ category: 'Feuille de Route', icon: '👑', title: 'Maître de la Route', desc: '40 jours validés', unlocked: allRouteDone, date: allRouteDone ? '2026-09-26' : null });
 
-      // Assiduité
       let uReg = freeSessions.length >= 10; badges.push({ category: 'Assiduité', icon: '🔁', title: 'Maçon Régulier', desc: '10 sessions', unlocked: uReg, date: uReg ? '2026-09-25' : null });
       let uAcier = freeSessions.length >= 20; badges.push({ category: 'Assiduité', icon: '🛡️', title: 'Maçon d\'Acier', desc: '20 sessions', unlocked: uAcier, date: uAcier ? '2026-09-26' : null });
       for(let i=1; i<=15; i++) {
@@ -1199,7 +1226,6 @@
         badges.push({ category: 'Assiduité', icon: '🔥', title: `Flamme ${i}`, desc: `Série de ${i} jours`, unlocked: u, date: u ? '2026-09-26' : null });
       }
 
-      // Jalons Spéciaux
       badges.push({ category: 'Jalons Spéciaux', icon: '⏱️', title: 'Gainage 2 min', desc: 'Séance >= 2 min', unlocked: freeSessions.some(h=>h.seconds>=120), date: freeSessions.some(h=>h.seconds>=120) ? freeSessions.find(h=>h.seconds>=120).date : null });
       badges.push({ category: 'Jalons Spéciaux', icon: '🧱', title: 'Gainage 3 min', desc: 'Séance >= 3 min', unlocked: freeSessions.some(h=>h.seconds>=180), date: freeSessions.some(h=>h.seconds>=180) ? freeSessions.find(h=>h.seconds>=180).date : null });
       badges.push({ category: 'Jalons Spéciaux', icon: '⚡', title: 'Gainage 4 min', desc: 'Séance >= 4 min', unlocked: freeSessions.some(h=>h.seconds>=240), date: freeSessions.some(h=>h.seconds>=240) ? freeSessions.find(h=>h.seconds>=240).date : null });
